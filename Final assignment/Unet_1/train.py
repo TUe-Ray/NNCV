@@ -14,6 +14,7 @@ Feel free to customize the script as needed for your use case.
 """
 import os
 from argparse import ArgumentParser
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 import wandb
 import torch
@@ -93,7 +94,7 @@ def main(args):
     # Define the transforms to apply to the data
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
@@ -141,6 +142,8 @@ def main(args):
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)  
+
 
     # Training loop
     best_valid_loss = float('inf')
@@ -169,6 +172,7 @@ def main(args):
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
             
+        scheduler.step() 
         # Validation
         model.eval()
         with torch.no_grad():

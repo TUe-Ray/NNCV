@@ -7,4 +7,4 @@ python3 train_resnet34.py \
     --lr 0.001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "resnet34 lr 0.001 epoch30 256" \
+    --experiment-id "resnet_unet34 lr 0.001 epoch30 256" \

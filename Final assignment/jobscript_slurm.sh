@@ -6,4 +6,6 @@
 #SBATCH --partition=gpu_a100
 #SBATCH --time=00:30:00
 
+module load 2023
+
 srun apptainer exec --nv --env-file .env container.sif /bin/bash main.sh

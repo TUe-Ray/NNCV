@@ -30,9 +30,7 @@ from torchvision.transforms.v2 import (
     ToDtype,
 )
 
-#from unet_1 import UNet
-# 引入 segmentation_models_pytorch 函式庫
-import segmentation_models_pytorch as smp
+from resnet34_unet import ResUNet
 
 
 # Mapping class IDs to train IDs
@@ -95,7 +93,7 @@ def main(args):
     # Define the transforms to apply to the data
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
@@ -132,26 +130,19 @@ def main(args):
         num_workers=args.num_workers
     )
 
-    # # Define the model
-    # model = UNet(
-    #     in_channels=3,  # RGB images
-    #     n_classes=19,  # 19 classes in the Cityscapes dataset
-    # ).to(device)
-    # Define the model using segmentation_models_pytorch with a pretrained encoder (ResNet34)
-    model = smp.Unet(
-        encoder_name="resnet34",       # 使用 ResNet34 作為 encoder，可改為其他支援的模型
-        encoder_weights="imagenet",      # 使用 ImageNet 預訓練權重
-        in_channels=3,                   # 輸入通道數
-        classes=19,                      # 分割的類別數
+    # Define the model
+    model = UNet(
+        in_channels=3,  # RGB images
+        n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)
-
 
     # Define the loss function
     criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
-    
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
+
 
     # Training loop
     best_valid_loss = float('inf')
@@ -216,7 +207,7 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
             
             valid_loss = sum(losses) / len(losses)
-            
+            scheduler.step(valid_loss)
             wandb.log({
                 "valid_loss": valid_loss
             }, step=(epoch + 1) * len(train_dataloader) - 1)

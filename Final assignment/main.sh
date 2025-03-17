@@ -1,6 +1,6 @@
 wandb login
 
-python3 resnet34_unet.py \
+python3 train_resnet34.py \
     --data-dir ./data/cityscapes \
     --batch-size 64 \
     --epochs 10 \

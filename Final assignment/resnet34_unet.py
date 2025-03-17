@@ -14,7 +14,7 @@ class ResUNet(nn.Module):
         
         super(ResUNet, self).__init__()
         # 載入預訓練的 ResNet34
-        resnet = models.resnet34(pretrained=True)
+        resnet = models.resnet34(weights=models.ResNet34_Weights.IMAGENET1K_V1)
 
          # Encoder 部分：提取 ResNet34 前幾個模組作為特徵抽取器
         self.encoder0 = nn.Sequential(
@@ -54,7 +54,7 @@ class ResUNet(nn.Module):
         d3 = self.up3(d4, x2)   # 融合上一層與 encoder2
         d2 = self.up2(d3, x1)   # 融合上一層與 encoder1
         d1 = self.up1(d2, x0)   # 融合上一層與 encoder0
-        logits = self.outc(x)
+        logits = self.outc(d1)
 
         return logits
         

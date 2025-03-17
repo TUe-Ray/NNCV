@@ -95,7 +95,7 @@ def main(args):
         ToImage(),
         Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
-        Normalize((0.5,), (0.5,)),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
     # Load the dataset and make a split for training and validation

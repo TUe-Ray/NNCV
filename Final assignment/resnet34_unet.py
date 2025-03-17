@@ -22,13 +22,13 @@ class ResUNet(nn.Module):
             resnet.bn1,
             resnet.relu
         )
-        self.encoder1 = nn.Sequential(
-            resnet.maxpool,  # 下採樣，使尺寸變為原始尺寸/4
-            resnet.layer1   # 輸出通道：64
-        )
-        self.encoder2 = resnet.layer2   # 輸出通道：128，尺寸：/8
-        self.encoder3 = resnet.layer3   # 輸出通道：256，尺寸：/16
-        self.encoder4 = resnet.layer4   # 輸出通道：512，尺寸：/32
+        # self.encoder1 = nn.Sequential(
+        #     resnet.maxpool,  # 下採樣，使尺寸變為原始尺寸/4
+        #     resnet.layer1   # 輸出通道：64
+        # )
+        self.encoder2 = resnet.layer2   # 輸出通道：128，尺寸：/4
+        self.encoder3 = resnet.layer3   # 輸出通道：256，尺寸：/8
+        self.encoder4 = resnet.layer4   # 輸出通道：512，尺寸：/16
 
          # up4: 融合 encoder4 (512 channels) 與 encoder3 (256 channels)
         self.up4 = Up(in_channels=512 + 256, out_channels=256)

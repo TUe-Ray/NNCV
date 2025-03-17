@@ -131,7 +131,7 @@ def main(args):
     )
 
     # Define the model
-    model = UNet(
+    model = ResUNet(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)

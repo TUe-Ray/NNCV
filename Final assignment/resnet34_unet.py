@@ -18,26 +18,28 @@ class ResUNet(nn.Module):
 
          # Encoder 部分：提取 ResNet34 前幾個模組作為特徵抽取器
         self.encoder0 = nn.Sequential(
-            resnet.conv1,  # 輸出通道：64，尺寸：原始尺寸/2
+            resnet.conv1,  # 輸出通道：64，尺寸：原始尺寸/2 =128
             resnet.bn1,
             resnet.relu
         )
-        # self.encoder1 = nn.Sequential(
-        #     resnet.maxpool,  # 下採樣，使尺寸變為原始尺寸/4
-        #     resnet.layer1   # 輸出通道：64
-        # )
-        self.encoder2 = resnet.layer2   # 輸出通道：128，尺寸：/4
-        self.encoder3 = resnet.layer3   # 輸出通道：256，尺寸：/8
-        self.encoder4 = resnet.layer4   # 輸出通道：512，尺寸：/16
+        self.encoder1 = nn.Sequential(
+            resnet.maxpool,  # 下採樣，使尺寸變為原始尺寸/4
+            resnet.layer1   # 輸出通道：64
+        )
+        self.encoder2 = resnet.layer2   # 輸出通道：128，尺寸：/8
+        self.encoder3 = resnet.layer3   # 輸出通道：256，尺寸：/16
+        self.encoder4 = resnet.layer4   # 輸出通道：512，尺寸：/32 =8
 
-         # up4: 融合 encoder4 (512 channels) 與 encoder3 (256 channels)
+         # up4: 融合 encoder4 (512 channels) 與 encoder3 (256 channels) output = 16
         self.up4 = Up(in_channels=512 + 256, out_channels=256)
-        # up3: 融合上一層輸出 (256 channels) 與 encoder2 (128 channels)
+        # up3: 融合上一層輸出 (256 channels) 與 encoder2 (128 channels) output = 32
         self.up3 = Up(in_channels=256 + 128, out_channels=128)
-        # up2: 融合上一層輸出 (128 channels) 與 encoder1 (64 channels)
+        # up2: 融合上一層輸出 (128 channels) 與 encoder1 (64 channels) output = 64
         self.up2 = Up(in_channels=128 + 64, out_channels=64)
-        # up1: 融合上一層輸出 (64 channels) 與 encoder0 (64 channels)
+        # up1: 融合上一層輸出 (64 channels) 與 encoder0 (64 channels)output = 128
         self.up1 = Up(in_channels=64 + 64, out_channels=64)
+
+        self.upsampling = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         # 最後輸出層：將通道數轉換為分類數
         self.outc = OutConv(in_channels=64, out_channels=n_classes)
 
@@ -45,7 +47,7 @@ class ResUNet(nn.Module):
          # Encoder 部分
         x0 = self.encoder0(x)   # 輸出尺寸：/2
         x1 = self.encoder1(x0)  # 輸出尺寸：/4
-        x2 = self.encoder2(x1)  # 輸出尺寸：/8
+        x2 = self.encoder2(x0)  # 輸出尺寸：/8
         x3 = self.encoder3(x2)  # 輸出尺寸：/16
         x4 = self.encoder4(x3)  # 輸出尺寸：/32
 
@@ -54,7 +56,8 @@ class ResUNet(nn.Module):
         d3 = self.up3(d4, x2)   # 融合上一層與 encoder2
         d2 = self.up2(d3, x1)   # 融合上一層與 encoder1
         d1 = self.up1(d2, x0)   # 融合上一層與 encoder0
-        logits = self.outc(d1)
+        d0 = self.upsampling(d1)     # 上採樣回原始尺寸
+        logits = self.outc(d0) # 輸出分類結果
 
         return logits
         

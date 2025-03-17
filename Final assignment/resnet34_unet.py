@@ -47,7 +47,7 @@ class ResUNet(nn.Module):
          # Encoder 部分
         x0 = self.encoder0(x)   # 輸出尺寸：/2
         x1 = self.encoder1(x0)  # 輸出尺寸：/4
-        x2 = self.encoder2(x0)  # 輸出尺寸：/8
+        x2 = self.encoder2(x1)  # 輸出尺寸：/8
         x3 = self.encoder3(x2)  # 輸出尺寸：/16
         x4 = self.encoder4(x3)  # 輸出尺寸：/32
 

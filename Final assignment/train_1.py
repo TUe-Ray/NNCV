@@ -93,9 +93,9 @@ def main(args):
     # Define the transforms to apply to the data
     transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
-        Normalize((0.5,), (0.5,)),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
     # Load the dataset and make a split for training and validation

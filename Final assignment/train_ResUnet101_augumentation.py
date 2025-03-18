@@ -17,7 +17,6 @@ from argparse import ArgumentParser
 
 import wandb
 import torch
-import random
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
@@ -32,7 +31,9 @@ from torchvision.transforms.v2 import (
     RandomHorizontalFlip,
     RandomRotation,
     ColorJitter,
-    GaussianBlur
+    GaussianBlur,
+    InterpolationMode,
+    RandomCrop,
 )
 
 from resnet101_unet import ResUNet
@@ -72,24 +73,6 @@ def get_args_parser():
     parser.add_argument("--experiment-id", type=str, default="unet-training", help="Experiment ID for Weights & Biases")
 
     return parser
-class AugmentWrapper(torch.utils.data.Dataset):
-    def __init__(self, dataset, transform, augment_ratio=0.5):
-        self.dataset = dataset
-        self.transform = transform
-        self.augment_ratio = augment_ratio
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-        img, label = self.dataset[idx]
-        
-        # 50% 機率應用 Augmentation
-        if random.random() < self.augment_ratio:
-            img = self.transform(img)
-
-        return img, label
-
 
 
 def main(args):
@@ -114,16 +97,26 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-    # Augmentation 設定
-    augmented_transform = Compose([
+    
+
+
+
+    # 定義 Train 與 Validation 的 transforms
+    # ------------------------------------------------------------------------------
+    # Training: 使用多種資料增強
+    train_transform = Compose([
+        ToImage(),
         RandomHorizontalFlip(p=0.5),
-        RandomRotation(degrees=15),
+        '''RandomCrop((256, 256), pad_if_needed=True),'''
         ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        ToDtype(torch.float32, scale=True),
+        RandomRotation(degrees=15),
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
-    # Define the transforms to apply to the data
-    transform = Compose([
+    # Validation: 保持最簡單的處理
+    valid_transform = Compose([
         ToImage(),
         Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
@@ -136,18 +129,17 @@ def main(args):
         split="train", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=train_transform
     )
     valid_dataset = Cityscapes(
         args.data_dir, 
         split="val", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=valid_transform
     )
 
-    train_dataset = AugmentWrapper(train_dataset, augmented_transform, augment_ratio=0.5)
-
+    train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
     valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
 
     train_dataloader = DataLoader(

@@ -13,54 +13,52 @@ class ResUNet(nn.Module):
     def __init__(self, in_channels=3, n_classes=19):
         
         super(ResUNet, self).__init__()
-        # 載入預訓練的 ResNet34
-        resnet = models.resnet34(weights=models.ResNet34_Weights.IMAGENET1K_V1)
-        # 將 resnet 的所有參數凍結，不進行反向傳播更新
-        for param in resnet.parameters():
-            param.requires_grad = False
-
-         # Encoder 部分：提取 ResNet34 前幾個模組作為特徵抽取器
+        # 載入預訓練的 ResNet101
+        resnet = models.resnet101(weights=models.ResNet101_Weights.IMAGENET1K_V2)
+        
+        # Encoder 部分：使用 ResNet101 的前幾層
         self.encoder0 = nn.Sequential(
-            resnet.conv1,  # 輸出通道：64，尺寸：原始尺寸/2 =128
+            resnet.conv1,   # 輸出：64, 尺寸：原圖/2
             resnet.bn1,
             resnet.relu
         )
         self.encoder1 = nn.Sequential(
-            resnet.maxpool,  # 下採樣，使尺寸變為原始尺寸/4
-            resnet.layer1   # 輸出通道：64
+            resnet.maxpool, # 尺寸：原圖/4
+            resnet.layer1   # 輸出：256
         )
-        self.encoder2 = resnet.layer2   # 輸出通道：128，尺寸：/8
-        self.encoder3 = resnet.layer3   # 輸出通道：256，尺寸：/16
-        self.encoder4 = resnet.layer4   # 輸出通道：512，尺寸：/32 =8
+        self.encoder2 = resnet.layer2   # 輸出：512，尺寸：原圖/8
+        self.encoder3 = resnet.layer3   # 輸出：1024，尺寸：原圖/16
+        self.encoder4 = resnet.layer4   # 輸出：2048，尺寸：原圖/32
 
-         # up4: 融合 encoder4 (512 channels) 與 encoder3 (256 channels) output = 16
-        self.up4 = Up(in_channels=512 + 256, out_channels=256)
-        # up3: 融合上一層輸出 (256 channels) 與 encoder2 (128 channels) output = 32
-        self.up3 = Up(in_channels=256 + 128, out_channels=128)
-        # up2: 融合上一層輸出 (128 channels) 與 encoder1 (64 channels) output = 64
-        self.up2 = Up(in_channels=128 + 64, out_channels=64)
-        # up1: 融合上一層輸出 (64 channels) 與 encoder0 (64 channels)output = 128
-        self.up1 = Up(in_channels=64 + 64, out_channels=64)
+         # Decoder 部分
+        # up4: 融合 encoder4 (2048 channels) 與 encoder3 (1024 channels)
+        self.up4 = Up(in_channels=2048 + 1024, out_channels=1024)
+        # up3: 融合上一層輸出 (1024 channels) 與 encoder2 (512 channels)
+        self.up3 = Up(in_channels=1024 + 512, out_channels=512)
+        # up2: 融合上一層輸出 (512 channels) 與 encoder1 (256 channels)
+        self.up2 = Up(in_channels=512 + 256, out_channels=256)
+        # up1: 融合上一層輸出 (256 channels) 與 encoder0 (64 channels)
+        self.up1 = Up(in_channels=256 + 64, out_channels=128)
 
+        # 最後進行上採樣，從原圖/2 -> 原圖尺寸
         self.upsampling = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        # 最後輸出層：將通道數轉換為分類數
-        self.outc = OutConv(in_channels=64, out_channels=n_classes)
+        # 輸出層：將通道數轉換為分類數
+        self.outc = OutConv(in_channels=128, out_channels=n_classes)
 
     def forward(self, x):
-         # Encoder 部分
-        x0 = self.encoder0(x)   # 輸出尺寸：/2
-        x1 = self.encoder1(x0)  # 輸出尺寸：/4
-        x2 = self.encoder2(x1)  # 輸出尺寸：/8
-        x3 = self.encoder3(x2)  # 輸出尺寸：/16
-        x4 = self.encoder4(x3)  # 輸出尺寸：/32
+        x0 = self.encoder0(x)   # 尺寸：原圖/2, 通道：64
+        x1 = self.encoder1(x0)  # 尺寸：原圖/4, 通道：256
+        x2 = self.encoder2(x1)  # 尺寸：原圖/8, 通道：512
+        x3 = self.encoder3(x2)  # 尺寸：原圖/16, 通道：1024
+        x4 = self.encoder4(x3)  # 尺寸：原圖/32, 通道：2048
 
-        # Decoder 部分，透過上採樣並與 encoder 特徵做 skip connection
-        d4 = self.up4(x4, x3)   # 融合 encoder4 與 encoder3
-        d3 = self.up3(d4, x2)   # 融合上一層與 encoder2
-        d2 = self.up2(d3, x1)   # 融合上一層與 encoder1
-        d1 = self.up1(d2, x0)   # 融合上一層與 encoder0
-        d0 = self.upsampling(d1)     # 上採樣回原始尺寸
-        logits = self.outc(d0) # 輸出分類結果
+        # Decoder 部分：依序融合 encoder 特徵
+        d4 = self.up4(x4, x3)   # 融合 encoder4 與 encoder3 → 輸出尺寸：原圖/16, 通道：1024
+        d3 = self.up3(d4, x2)   # 融合上一層輸出與 encoder2 → 輸出尺寸：原圖/8, 通道：512
+        d2 = self.up2(d3, x1)   # 融合上一層輸出與 encoder1 → 輸出尺寸：原圖/4, 通道：256
+        d1 = self.up1(d2, x0)   # 融合上一層輸出與 encoder0 → 輸出尺寸：原圖/2, 通道：128
+        d0 = self.upsampling(d1)  # 上採樣回原始尺寸
+        logits = self.outc(d0)    # 輸出分類結果
 
         return logits
         

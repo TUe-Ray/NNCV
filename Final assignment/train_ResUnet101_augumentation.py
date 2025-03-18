@@ -107,6 +107,7 @@ def main(args):
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
+        Resize((256, 256)),
         #RandomCrop((256, 256), pad_if_needed=True),
         ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
         ToDtype(torch.float32, scale=True),

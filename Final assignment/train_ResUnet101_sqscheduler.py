@@ -29,8 +29,7 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
 )
-from torch.optim.lr_scheduler import CosineAnnealingLR, SequentialLR, LinearLR
-
+from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 
 from resnet101_unet import ResUNet
 
@@ -159,24 +158,34 @@ def main(args):
         {'params': decoder_params, 'lr': base_lr},       # decoder使用較高的lr
     ])
 
-    # warm-up階段設定（前5個epoch逐漸提升學習率）
-    warmup_epochs = 5
+    
 
-    # Warm-up scheduler: lr 從 0.1 倍逐步增至 1 倍
-    warmup_scheduler = LinearLR(
-        optimizer, start_factor=0.2, total_iters=warmup_epochs
+    # **第一段：Cosine Annealing (0-10 epochs, Encoder: 1e-4 → 1e-5, Decoder: 1e-3 → 1e-4)**
+    scheduler1 = CosineAnnealingLR(optimizer, T_max=10, eta_min=base_lr * 0.1)
+
+    # **第二段：線性下降 (10-20 epochs, Encoder: 7.5e-5 → 5e-5, Decoder: 7.5e-4 → 5e-4)**
+    scheduler2 = LambdaLR(
+        optimizer, 
+        lr_lambda=[
+            lambda epoch: (7.5e-5 / (base_lr * 0.1)),  # Encoder 的線性縮放比例
+            lambda epoch: (7.5e-4 / base_lr)  # Decoder 的線性縮放比例
+        ]
     )
 
-    # Cosine Annealing scheduler: 餘弦退火到最後 epoch
-    cosine_scheduler = CosineAnnealingLR(
-        optimizer, T_max=(args.epochs - warmup_epochs), eta_min=1e-6
+    # **第三段：線性下降 (20-30 epochs, Encoder: 5e-5 → 2.5e-5, Decoder: 5e-4 → 2.5e-4)**
+    scheduler3 = LambdaLR(
+        optimizer, 
+        lr_lambda=[
+            lambda epoch: (5e-5 / 7.5e-5),  # Encoder
+            lambda epoch: (5e-4 / 7.5e-4)   # Decoder
+        ]
     )
 
-    # 以 SequentialLR 結合兩者
+    # **結合所有 Schedulers**
     scheduler = SequentialLR(
         optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_epochs]
+        schedulers=[scheduler1, scheduler2, scheduler3],
+        milestones=[10, 20]  # Epoch 10 切換到 scheduler2，Epoch 20 切換到 scheduler3
     )
 
     # Training loop
@@ -205,6 +214,7 @@ def main(args):
                 "learning_rate": optimizer.param_groups[1]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
+
 
         # 每個 epoch 結束時更新 scheduler
         scheduler.step()

@@ -30,7 +30,7 @@ from torchvision.transforms.v2 import (
     ToDtype,
 )
 
-from resnet34_unet import ResUNet
+from unet_1 import UNet
 
 
 # Mapping class IDs to train IDs
@@ -72,7 +72,7 @@ def get_args_parser():
 def main(args):
     # Initialize wandb for logging
     wandb.init(
-        project="5lsm0-cityscapes-segmentation",  # Project name in wandb
+        project="5lsm0-cityscapes-segmentation-DICE LOSS",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
         config=vars(args),  # Save hyperparameters
     )
@@ -93,7 +93,7 @@ def main(args):
     # Define the transforms to apply to the data
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
@@ -131,7 +131,7 @@ def main(args):
     )
 
     # Define the model
-    model = ResUNet(
+    model = UNet(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)
@@ -139,21 +139,8 @@ def main(args):
     # Define the loss function
     criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
 
-        # Define the optimizer
-        # 分離 encoder 與其他部分的參數
-    encoder_params = []
-    decoder_params = []
-    for name, param in model.named_parameters():
-        if 'encoder' in name:
-            encoder_params.append(param)
-        else:
-            decoder_params.append(param)
-
-    # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
-    optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr * 0.1},
-        {'params': decoder_params, 'lr': args.lr}
-    ])
+    # Define the optimizer
+    optimizer = AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
 
 

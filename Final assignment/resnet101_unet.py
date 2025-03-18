@@ -15,9 +15,9 @@ class ResUNet(nn.Module):
         super(ResUNet, self).__init__()
         # 載入預訓練的 ResNet34
         resnet = models.resnet34(weights=models.ResNet34_Weights.IMAGENET1K_V1)
-        '''# 將 resnet 的所有參數凍結，不進行反向傳播更新
+        # 將 resnet 的所有參數凍結，不進行反向傳播更新
         for param in resnet.parameters():
-            param.requires_grad = False'''
+            param.requires_grad = False
 
          # Encoder 部分：提取 ResNet34 前幾個模組作為特徵抽取器
         self.encoder0 = nn.Sequential(

@@ -7,7 +7,7 @@
 #SBATCH --time=3:00:00
 
 # Pull container from dockerhub
-apptainer pull container.sif docker://cclaess/5lsm0:v1
+apptainer pull container.sif docker://tjmjaspers/nncv2025:v1
 
 # Use the huggingface-cli package inside the container to download the data
 mkdir -p data

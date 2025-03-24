@@ -7,4 +7,4 @@
 #SBATCH --time=3:00:00
 
 # Pull container from dockerhub
-apptainer pull container.sif docker://tjmjaspers/nncv2025:v3
+apptainer pull --force container.sif docker://tjmjaspers/nncv2025:v3

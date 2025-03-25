@@ -1,6 +1,6 @@
 wandb login
 
-python3 train_DiceCE_ResUnet101_aug_512.py \
+python3 train_Dice_ResUnet101_aug_512.py \
     --data-dir ./data/cityscapes \
     --batch-size 16 \
     --epochs 2 \

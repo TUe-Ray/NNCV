@@ -4,9 +4,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=9
 #SBATCH --gpus=1
-#SBATCH --partition=gpu_mig
+#SBATCH --partition=gpu_a100
 #SBATCH --time=00:10:00
-#SBATCH --output=list_modulesv7.out
+#SBATCH --output=list_modulesv6.out
 
 # Load apptainer module if needed (only if system uses module system)
 # module load apptainer

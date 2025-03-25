@@ -168,7 +168,7 @@ def main(args):
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
     criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
-
+    dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
         # Define the optimizer
@@ -220,7 +220,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
-            dice_scores = []
+            dice_losses = []  # 新增：用來累積 Dice loss
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -232,7 +232,10 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-            
+                # 計算 Dice Loss
+                dice_loss_val = dice_loss_fn(outputs, labels)
+                dice_losses.append(dice_loss_val.item())
+
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
 
@@ -254,11 +257,14 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             
-            valid_loss = sum(losses) / len(losses)
             
+            
+            valid_loss = sum(losses) / len(losses)
+            valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
             scheduler.step(valid_loss)
             wandb.log({
-                "valid_loss": valid_loss
+                "valid_loss": valid_loss,
+                "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

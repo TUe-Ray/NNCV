@@ -36,6 +36,13 @@ def dice_loss(logits, targets, ignore_index=255, eps=1e-6):
     # 預測機率
     probs = F.softmax(logits, dim=1)  # (N, C, H, W)
 
+    # ----- 關鍵修正 -----
+    # 1. 先複製一份 label，針對 ignore_index=255 的位置改成 0
+    targets_for_scatter = targets.clone()
+    targets_for_scatter[~valid_mask] = 0
+
+    # 2. 再做 scatter，不會發生 index out of range
+
     # one-hot
     with torch.no_grad():
         targets_onehot = torch.zeros_like(probs).scatter_(1, targets.unsqueeze(1), 1)

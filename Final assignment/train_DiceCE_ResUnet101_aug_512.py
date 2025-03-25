@@ -40,8 +40,8 @@ from torchvision.transforms.v2 import (
 from resnet101_unet import ResUNet
 from my_loss_combinations import CombinedDiceCELoss
 
-# 使用 torchmetrics 內建的 dice_score
-from torchmetrics.functional.segmentation import dice_score
+import segmentation_models_pytorch as smp 
+
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -168,7 +168,7 @@ def main(args):
 
     # Define the loss function
     criterion = CombinedDiceCELoss(weight_dice=0.5, weight_ce=0.5, ignore_index=255)
-
+    dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
         # Define the optimizer
         # 分離 encoder 與其他部分的參數
@@ -219,7 +219,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
-            dice_scores = []
+            dice_losses = []  # 新增：用來累積 Dice loss
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -231,10 +231,10 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-                # 使用 torchmetrics 內建的 dice_score，注意設定 multiclass=True 並指定平均方式
-                preds = outputs.softmax(1).argmax(1)
-                dice = dice_score(preds, labels, num_classes=19, ignore_index=255, average='macro')
-                dice_scores.append(dice.item())
+            
+                # 計算 Dice Loss
+                dice_loss_val = dice_loss_fn(outputs, labels)
+                dice_losses.append(dice_loss_val.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -258,11 +258,11 @@ def main(args):
 
             
             valid_loss = sum(losses) / len(losses)
-            avg_valid_dice = sum(dice_scores) / len(dice_scores)
+            valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
             scheduler.step(valid_loss)
             wandb.log({
                 "valid_loss": valid_loss,
-                "valid_dice": avg_valid_dice,
+                "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

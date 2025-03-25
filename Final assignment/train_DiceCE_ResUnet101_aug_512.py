@@ -40,6 +40,9 @@ from torchvision.transforms.v2 import (
 from resnet101_unet import ResUNet
 from my_loss_combinations import CombinedDiceCELoss
 
+# 使用 torchmetrics 內建的 dice_score
+from torchmetrics.functional import dice_score
+
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
 def convert_to_train_id(label_img: torch.Tensor) -> torch.Tensor:
@@ -226,6 +229,11 @@ def main(args):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
+
+                 # 使用 torchmetrics 內建的 dice_score，注意設定 multiclass=True 並指定平均方式
+                preds = outputs.softmax(1).argmax(1)
+                dice = dice_score(preds, labels, num_classes=19, ignore_index=255, average='macro', multiclass=True)
+                dice_scores.append(dice.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)

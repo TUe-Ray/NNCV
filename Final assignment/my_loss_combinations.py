@@ -23,41 +23,72 @@ class CombinedDiceCELoss(nn.Module):
         return self.weight_dice * dice + self.weight_ce * ce
 
 
-def dice_loss(logits, targets, ignore_index=255, eps=1e-6):
-    """
-    多類別 Dice Loss:
-    1. 先做 softmax 得到 (N, C, H, W) 的每類機率。
-    2. 將 targets 做 one-hot，忽略 ignore_index。
-    3. 分別計算每個類別的 Dice，最後取平均。
-    """
-    n, c, h, w = logits.shape
-    # 排除 ignore_index
-    valid_mask = (targets != ignore_index)  # (N, H, W)
-    # 預測機率
-    probs = F.softmax(logits, dim=1)  # (N, C, H, W)
+# def dice_loss(logits, targets, ignore_index=255, eps=1e-6):
+#     """
+#     多類別 Dice Loss:
+#     1. 先做 softmax 得到 (N, C, H, W) 的每類機率。
+#     2. 將 targets 做 one-hot，忽略 ignore_index。
+#     3. 分別計算每個類別的 Dice，最後取平均。
+#     """
+#     n, c, h, w = logits.shape
+#     # 排除 ignore_index
+#     valid_mask = (targets != ignore_index)  # (N, H, W)
+#     # 預測機率
+#     probs = F.softmax(logits, dim=1)  # (N, C, H, W) NxCxHxW 和目標 NxHxW，其中 N 是批次大小，C 是類別數
 
-    # ----- 關鍵修正 -----
-    # 1. 先複製一份 label，針對 ignore_index=255 的位置改成 0
+#     # ----- 關鍵修正 -----
+#     # 1. 先複製一份 label，針對 ignore_index=255 的位置改成 0
+#     targets_for_scatter = targets.clone()
+#     targets_for_scatter[~valid_mask] = 0
+
+#     # 2. 再做 scatter，不會發生 index out of range
+
+#     # one-hot
+#     with torch.no_grad():
+#         targets_onehot = torch.zeros_like(probs).scatter_(1, targets.unsqueeze(1), 1)
+#         # 忽略掉 ignore_index 的位置
+#         targets_onehot = targets_onehot * valid_mask.unsqueeze(1)
+
+#     # 對每個 class 分別計算 Dice
+#     dims = (0, 2, 3)  # 從 batch, height, width 維度做 sum
+#     intersection = torch.sum(probs * targets_onehot, dim=dims)
+#     cardinality = torch.sum(probs, dim=dims) + torch.sum(targets_onehot, dim=dims) + eps
+#     dice_per_class = 2. * intersection / cardinality
+
+#     # 只計算有出現的類別，如果某個類別在整個 batch 都沒出現 (或被忽略)，
+#     # 此處可能需要更進階的判斷。簡單做法是直接取所有類別平均。
+#     return 1 - dice_per_class.mean()
+
+def dice_loss(logits, targets, ignore_index=255, eps=1e-6):
+    n, c, h, w = logits.shape
+    # 建立有效 mask：只有非 ignore 的像素才有效
+    valid_mask = (targets != ignore_index)  # (N, H, W)
+    probs = F.softmax(logits, dim=1)       # (N, C, H, W)
+
+    # 複製 targets 並把 ignore 區域設為 0
     targets_for_scatter = targets.clone()
     targets_for_scatter[~valid_mask] = 0
 
-    # 2. 再做 scatter，不會發生 index out of range
+    # 檢查有效區域內的值是否都在 [0, c-1]
+    assert targets_for_scatter.min() >= 0, "Negative label detected!"
+    assert targets_for_scatter.max() < c, \
+        f"Label value {targets_for_scatter.max().item()} out of range [0, {c-1}] detected! Check your convert_to_train_id mapping."
 
-    # one-hot
+    # 使用 scatter 生成 one-hot
     with torch.no_grad():
-        targets_onehot = torch.zeros_like(probs).scatter_(1, targets.unsqueeze(1), 1)
-        # 忽略掉 ignore_index 的位置
-        targets_onehot = targets_onehot * valid_mask.unsqueeze(1)
+        targets_onehot = torch.zeros_like(probs).scatter_(1, targets_for_scatter.unsqueeze(1), 1)
 
-    # 對每個 class 分別計算 Dice
-    dims = (0, 2, 3)  # 從 batch, height, width 維度做 sum
+    # 再將 ignore 區域乘以 0
+    targets_onehot = targets_onehot * valid_mask.unsqueeze(1)
+
+    # 計算每個類別的 Dice
+    dims = (0, 2, 3)  # sum over batch, height, width
     intersection = torch.sum(probs * targets_onehot, dim=dims)
     cardinality = torch.sum(probs, dim=dims) + torch.sum(targets_onehot, dim=dims) + eps
     dice_per_class = 2. * intersection / cardinality
 
-    # 只計算有出現的類別，如果某個類別在整個 batch 都沒出現 (或被忽略)，
-    # 此處可能需要更進階的判斷。簡單做法是直接取所有類別平均。
     return 1 - dice_per_class.mean()
+
 class FocalLoss(nn.Module):
     """
     多類別 Focal Loss 實作

@@ -22,7 +22,6 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
-
 from torchvision.transforms.v2 import (
     Compose,
     Normalize,
@@ -39,7 +38,6 @@ from torchvision.transforms.v2 import (
 
 from resnet101_unet import ResUNet
 import segmentation_models_pytorch as smp 
-
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -80,7 +78,7 @@ def get_args_parser():
 def main(args):
     # Initialize wandb for logging
     wandb.init(
-        project="5lsm0-cityscapes-segmentation-loss-combination",  # Project name in wandb
+        project="5lsm0-cityscapes-segmentation",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
         config=vars(args),  # Save hyperparameters
     )
@@ -165,11 +163,9 @@ def main(args):
     ).to(device)
 
     # Define the loss function
-    # 使用 SMP 內建的 DiceLoss（針對多分類任務）
-    # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
-    criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
-
-
+    criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
+    dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
+   
 
         # Define the optimizer
         # 分離 encoder 與其他部分的參數
@@ -220,7 +216,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
-            dice_scores = []
+            dice_losses = []  # 新增：用來累積 Dice loss
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -232,6 +228,9 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
+                # 計算 Dice Loss
+                dice_loss_val = dice_loss_fn(outputs, labels)
+                dice_losses.append(dice_loss_val.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -252,13 +251,13 @@ def main(args):
                         "predictions": [wandb.Image(predictions_img)],
                         "labels": [wandb.Image(labels_img)],
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
-
             
             valid_loss = sum(losses) / len(losses)
-            
+            valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
             scheduler.step(valid_loss)
             wandb.log({
-                "valid_loss": valid_loss
+                "valid_loss": valid_loss,
+                "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

@@ -219,6 +219,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
+            dice_scores = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -230,7 +231,7 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-                 # 使用 torchmetrics 內建的 dice_score，注意設定 multiclass=True 並指定平均方式
+                # 使用 torchmetrics 內建的 dice_score，注意設定 multiclass=True 並指定平均方式
                 preds = outputs.softmax(1).argmax(1)
                 dice = dice_score(preds, labels, num_classes=19, ignore_index=255, average='macro', multiclass=True)
                 dice_scores.append(dice.item())
@@ -254,11 +255,14 @@ def main(args):
                         "predictions": [wandb.Image(predictions_img)],
                         "labels": [wandb.Image(labels_img)],
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
+
             
             valid_loss = sum(losses) / len(losses)
+            avg_valid_dice = sum(dice_scores) / len(dice_scores)
             scheduler.step(valid_loss)
             wandb.log({
-                "valid_loss": valid_loss
+                "valid_loss": valid_loss,
+                "valid_dice": avg_valid_dice,
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

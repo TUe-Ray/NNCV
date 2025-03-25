@@ -38,7 +38,7 @@ from torchvision.transforms.v2 import (
 )
 
 from resnet101_unet import ResUNet
-from my_loss_combinations import CombinedDiceCELoss
+import segmentation_models_pytorch as smp 
 
 # 使用 torchmetrics 內建的 dice_score
 from torchmetrics.functional.segmentation import dice_score
@@ -167,7 +167,10 @@ def main(args):
     ).to(device)
 
     # Define the loss function
-    criterion = CombinedDiceCELoss(weight_dice=0.5, weight_ce=0.5, ignore_index=255)
+    # 使用 SMP 內建的 DiceLoss（針對多分類任務）
+    # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
+    criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
+
 
 
         # Define the optimizer
@@ -231,10 +234,6 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-                # 使用 torchmetrics 內建的 dice_score，注意設定 multiclass=True 並指定平均方式
-                preds = outputs.softmax(1).argmax(1)
-                dice = dice_score(preds, labels, num_classes=19, ignore_index=255, average='macro')
-                dice_scores.append(dice.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -258,11 +257,10 @@ def main(args):
 
             
             valid_loss = sum(losses) / len(losses)
-            avg_valid_dice = sum(dice_scores) / len(dice_scores)
+            
             scheduler.step(valid_loss)
             wandb.log({
-                "valid_loss": valid_loss,
-                "valid_dice": avg_valid_dice,
+                "valid_loss": valid_loss
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

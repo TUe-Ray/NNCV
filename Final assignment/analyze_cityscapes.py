@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import glob
 import json
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 # Function to process the Cityscapes dataset
 def analyze_cityscapes_pixel_distribution(cityscapes_dir):
@@ -29,15 +31,17 @@ def analyze_cityscapes_pixel_distribution(cityscapes_dir):
         id_to_name = {label['id']: label['name'] for label in labels}
     except FileNotFoundError:
         print("Labels file not found. Using default class IDs.")
+        # 正確的 labelId 對 className 映射（含 void、unlabeled 類別）
         id_to_name = {
-            0: 'road', 1: 'sidewalk', 2: 'building', 3: 'wall', 4: 'fence', 
-            5: 'pole', 6: 'traffic light', 7: 'traffic sign', 8: 'vegetation', 
-            9: 'terrain', 10: 'sky', 11: 'person', 12: 'rider', 13: 'car', 
-            14: 'truck', 15: 'bus', 16: 'train', 17: 'motorcycle', 18: 'bicycle',
-            19: 'static', 20: 'dynamic', 21: 'ground', 22: 'parking', 23: 'rail track',
-            24: 'guard rail', 25: 'bridge', 26: 'tunnel', 27: 'caravan', 28: 'trailer',
-            29: 'pole group'
+            0: 'unlabeled', 1: 'ego vehicle', 2: 'rectification border', 3: 'out of roi',
+            4: 'static', 5: 'dynamic', 6: 'ground', 7: 'road', 8: 'sidewalk', 9: 'parking',
+            10: 'rail track', 11: 'building', 12: 'wall', 13: 'fence', 14: 'guard rail',
+            15: 'bridge', 16: 'tunnel', 17: 'pole', 18: 'pole group', 19: 'traffic light',
+            20: 'traffic sign', 21: 'vegetation', 22: 'terrain', 23: 'sky', 24: 'person',
+            25: 'rider', 26: 'car', 27: 'truck', 28: 'bus', 29: 'caravan', 30: 'trailer',
+            31: 'train', 32: 'motorcycle', 33: 'bicycle'
         }
+
 
     # Initialize counters
     pixel_counts = {class_name: 0 for category in class_info for class_name in class_info[category]}
@@ -79,34 +83,47 @@ def analyze_cityscapes_pixel_distribution(cityscapes_dir):
 
 # Function to plot the distribution
 def plot_pixel_distribution(category_data, output_path, top_n=10):
-    fig, ax = plt.subplots(figsize=(14, 6))
+    import matplotlib.cm as cm
+    import matplotlib.colors as mcolors
 
-    category_colors = {
-        'flat': '#8A2BE2', 'construction': '#808080', 'nature': '#90EE90',
-        'vehicle': '#4169E1', 'sky': '#87CEEB', 'object': '#FFFF00',
-        'human': '#FF69B4', 'void': '#2F4F4F'
+    fig, ax = plt.subplots(figsize=(16, 6))
+
+    category_colormaps = {
+        'flat': cm.Purples,
+        'construction': cm.Greys,
+        'nature': cm.Greens,
+        'vehicle': cm.Blues,
+        'sky': cm.Blues,
+        'object': cm.YlOrBr,
+        'human': cm.Reds,
+        'void': cm.cividis
     }
 
-    category_positions = list(range(len(category_data)))
-    x_ticks, x_positions, x_labels = [], [], []
+    x_pos = 0
+    x_ticks, x_labels = [], []
 
-    for i, (category, classes) in enumerate(category_data.items()):
-        x_pos = category_positions[i]
-        x_ticks.append(x_pos + 0.5)
+    for category, classes in category_data.items():
+        num_classes = len(classes)
+        colormap = category_colormaps[category]
+        vmin, vmax = 0.3, 1.0  # 避免太亮的前段色
+        norm = mcolors.Normalize(vmin=0, vmax=max(num_classes - 1, 1))
+        colors = [colormap(vmin + (vmax - vmin) * i / max(num_classes - 1, 1)) for i in range(num_classes)]
 
-        sorted_classes = sorted(classes.items(), key=lambda x: x[1], reverse=True)[:top_n]
 
-        for j, (class_name, count) in enumerate(sorted_classes):
-            bar_pos = x_pos + j * 0.15
-            x_positions.append(bar_pos)
-            x_labels.append(class_name)
-
-            ax.bar(bar_pos, count, width=0.1, color=category_colors[category], alpha=0.8)
-
+        sorted_items = sorted(classes.items(), key=lambda x: x[1], reverse=True)
+        
+        for i, (class_name, count) in enumerate(sorted_items[:top_n]):
+            bar_pos = x_pos
+            ax.bar(bar_pos, count, width=0.4, color=colors[i])
             ax.text(bar_pos, count * 1.05, class_name, ha='center', va='bottom', rotation=90, fontsize=8)
+            x_labels.append(class_name)
+            x_ticks.append(bar_pos)
+            x_pos += 0.6  # avoid overlapping bars
+        
+        x_pos += 1.0  # space between categories
 
     ax.set_xticks(x_ticks)
-    ax.set_xticklabels(category_data.keys())
+    ax.set_xticklabels(x_labels, rotation=90, fontsize=8)
     ax.set_ylabel('Number of pixels')
     ax.set_yscale('log')
     ax.grid(axis='y', linestyle='--', alpha=0.7)
@@ -114,8 +131,9 @@ def plot_pixel_distribution(category_data, output_path, top_n=10):
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Plot saved to {output_path}")
+    print(f"✅ Plot saved to {output_path}")
     plt.close()
+
 
 # Main function to run the analysis
 def main():

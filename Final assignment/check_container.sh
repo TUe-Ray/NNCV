@@ -6,7 +6,7 @@
 #SBATCH --gpus=1
 #SBATCH --partition=gpu_mig
 #SBATCH --time=00:10:00
-#SBATCH --output=list_modules.out
+#SBATCH --output=list_modulesv7.out
 
 # Load apptainer module if needed (only if system uses module system)
 # module load apptainer

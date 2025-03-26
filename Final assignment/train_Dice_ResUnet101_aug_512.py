@@ -187,18 +187,14 @@ def main(args):
         {'params': encoder_params, 'lr': args.lr * 0.1},
         {'params': decoder_params, 'lr': args.lr}
     ])
-    # Warm-up scheduler：線性增加 LR，從 0 -> 1e-3
-    warmup_epochs = 5
-    warmup_scheduler = LinearLR(optimizer, start_factor=1e-1, end_factor=1.0, total_iters=warmup_epochs)
-
-    # ReduceLROnPlateau 只接收 optimizer 本身，所以我們後面包進去
-    plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
-
-    # 接起來：SequentialLR 讓 warm-up 先跑完再切換
-    scheduler = SequentialLR(
+    scheduler = CyclicLR(
         optimizer,
-        schedulers=[warmup_scheduler, plateau_scheduler],
-        milestones=[warmup_epochs]  # 第 N epoch 後切換到第二個 scheduler
+        base_lr=1e-5,
+        max_lr=1e-3,
+        step_size_up=5,  # 1 個 epoch warmup
+        step_size_down=10,            # 不設的話，up/down cycle 對稱
+        mode='triangular2',
+        cycle_momentum=False,           # 如果你用的是 Adam，要設 False
     )
 
     # Training loop

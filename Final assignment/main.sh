@@ -7,4 +7,4 @@ python3 train_DiceCE_ResUnet101_aug_512.py \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "ResUnet101 0.7Dice0.3CE 512 16/30/0.0005 aug" \
+    --experiment-id "ResUnet101 0.3Dice0.7CE 512 16/30/0.0005 aug" \

@@ -39,7 +39,6 @@ from torchvision.transforms.v2 import (
 
 from resnet101_unet import ResUNet
 import segmentation_models_pytorch as smp 
-from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 
 
 # Mapping class IDs to train IDs
@@ -168,7 +167,7 @@ def main(args):
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
-    criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
+    criterion = smp.losses.TverskyLoss(mode='multiclass', gamma = 2, ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
@@ -187,19 +186,8 @@ def main(args):
         {'params': encoder_params, 'lr': args.lr * 0.1},
         {'params': decoder_params, 'lr': args.lr}
     ])
-    # Warm-up scheduler：線性增加 LR，從 0 -> 1e-3
-    warmup_epochs = 5
-    warmup_scheduler = LinearLR(optimizer, start_factor=1e-1, end_factor=1.0, total_iters=warmup_epochs)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
 
-    # ReduceLROnPlateau 只接收 optimizer 本身，所以我們後面包進去
-    plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
-
-    # 接起來：SequentialLR 讓 warm-up 先跑完再切換
-    scheduler = SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, plateau_scheduler],
-        milestones=[warmup_epochs]  # 第 N epoch 後切換到第二個 scheduler
-    )
 
     # Training loop
     best_valid_loss = float('inf')

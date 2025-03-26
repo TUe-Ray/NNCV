@@ -167,7 +167,7 @@ def main(args):
     ).to(device)
 
     # Define the loss function
-    criterion = CombinedDiceCELoss(weight_dice=0.5, weight_ce=0.5, ignore_index=255)
+    criterion = CombinedDiceCELoss(weight_dice=0.7, weight_ce=0.3, ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
         # Define the optimizer

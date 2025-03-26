@@ -191,8 +191,8 @@ def main(args):
         optimizer,
         base_lr=1e-5,
         max_lr=1e-3,
-        step_size_up=5,  # 1 個 epoch warmup
-        step_size_down=10,            # 不設的話，up/down cycle 對稱
+        step_size_up=len(train_dataloader)*5,  # 1 個 epoch warmup
+        step_size_down=len(train_dataloader)*10,            # 不設的話，up/down cycle 對稱
         mode='triangular2',
         cycle_momentum=False,           # 如果你用的是 Adam，要設 False
     )

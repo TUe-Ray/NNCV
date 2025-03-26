@@ -7,4 +7,4 @@ python3 train_Dice_ResUnet101_aug_512.py \
     --lr 0.005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "ResUnet101 log_Dice 16/30/0.0005 aug" \
+    --experiment-id "ResUnet101 Tversky gamma1.33 16/30/0.0005 aug" \

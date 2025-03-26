@@ -1,10 +1,10 @@
 wandb login
 
-python3 train_DiceCE_ResUnet101_aug_512.py \
+python3 train_ResUnet101.py \
     --data-dir ./data/cityscapes \
-    --batch-size 16 \
+    --batch-size 64 \
     --epochs 30 \
-    --lr 0.0005 \
+    --lr 0.001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "ResUnet101 0.3Dice0.7CE 512 16/30/0.0005 aug" \
+    --experiment-id "ResUnet101 CE256 64/30/0.001 NO-aug" \

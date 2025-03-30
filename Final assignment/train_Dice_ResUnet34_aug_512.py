@@ -37,7 +37,7 @@ from torchvision.transforms.v2 import (
     RandomCrop,
 )
 
-from resnet101_unet import ResUNet
+from resnet34_unet import ResUNet
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 
@@ -168,7 +168,10 @@ def main(args):
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
-    criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
+    
+    
+    #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
+    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
@@ -187,16 +190,16 @@ def main(args):
         {'params': encoder_params, 'lr': args.lr * 0.1},
         {'params': decoder_params, 'lr': args.lr}
     ])
-    scheduler = CyclicLR(
-        optimizer,
-        base_lr=1e-5,
-        max_lr=1e-3,
-        step_size_up=len(train_dataloader)*5,  # 1 個 epoch warmup
-        step_size_down=len(train_dataloader)*10,            # 不設的話，up/down cycle 對稱
-        mode='triangular2',
-        cycle_momentum=False,           # 如果你用的是 Adam，要設 False
-    )
-
+    # scheduler = CyclicLR(
+    #     optimizer,
+    #     base_lr=1e-5,
+    #     max_lr=1e-3,
+    #     step_size_up=len(train_dataloader)*5,  # 1 個 epoch warmup
+    #     step_size_down=len(train_dataloader)*10,            # 不設的話，up/down cycle 對稱
+    #     mode='triangular2',
+    #     cycle_momentum=False,           # 如果你用的是 Adam，要設 False
+    # )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None

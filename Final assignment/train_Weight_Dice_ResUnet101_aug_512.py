@@ -170,7 +170,7 @@ def main(args):
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
-    criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255, class_weights=class_weights)
+    criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

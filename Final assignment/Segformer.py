@@ -184,7 +184,7 @@ def main(args):
         "nvidia/segformer-b2-finetuned-cityscapes-1024-1024",
         config=config,
         ignore_mismatched_sizes=True  # 如果 label 數跟原本不同，這個參數是關鍵！
-    )
+    ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別

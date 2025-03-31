@@ -7,4 +7,4 @@ python3 SOTA_Dice_aug_512.py \
     --lr 0.0001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "DeepLab+ 16/30/1e-4 aug" \
+    --experiment-id "ConvNeXtUNet 16/30/1e-4 aug" \

@@ -40,7 +40,7 @@ from torchvision.transforms.v2 import (
 
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
-
+from convnext_unet import ConvNeXtUNet 
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -155,14 +155,19 @@ def main(args):
 
 
 
-    # 使用SMP內建的更先進的模型 DeepLabV3+
-    model = smp.DeepLabV3Plus(
-        encoder_name="tu-xception71",    # 使用更SOTA的TU-Xception71作為encoder
-        encoder_weights="imagenet",     # 使用ImageNet預訓練權重
-        in_channels=3,                  # RGB影像
-        classes=19,                     # Cityscapes有19個類別
-    ).to(device)
+    # # 使用SMP內建的更先進的模型 DeepLabV3+
+    # model = smp.DeepLabV3Plus(
+    #     encoder_name="tu-xception71",    # 使用更SOTA的TU-Xception71作為encoder
+    #     encoder_weights="imagenet",     # 使用ImageNet預訓練權重
+    #     in_channels=3,                  # RGB影像
+    #     classes=19,                     # Cityscapes有19個類別
+    # ).to(device)
 
+
+    model = ConvNeXtUNet(
+        in_channels=3,  # RGB images
+        n_classes=19,   # 19 classes in the Cityscapes dataset
+    ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別

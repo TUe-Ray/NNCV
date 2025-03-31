@@ -173,15 +173,18 @@ def main(args):
     )
 
     
-    config = SegformerConfig.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
-    config.upsample_ratio = 1  # 不 downsample
+   # 載入預訓練的 config，然後修改 num_labels
+    config = SegformerConfig.from_pretrained(
+        "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
+    )
+    config.num_labels = 19  # 根據你的資料集修改
+
+    # 使用修改後的 config 初始化模型
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/segformer-b2-finetuned-cityscapes-1024-1024",
         config=config,
-        num_labels=19,
-        ignore_mismatched_sizes=True
-    ).to(device)
-
+        ignore_mismatched_sizes=True  # 如果 label 數跟原本不同，這個參數是關鍵！
+    )
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別

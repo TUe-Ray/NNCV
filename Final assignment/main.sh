@@ -7,4 +7,4 @@ python3 train_Tversky_ResUnet101_aug_512.py \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "ResUnet34 TverskyLoss_LROnPla_gamma1.5 16/30/5e-4 aug" \
+    --experiment-id "ResUnet34 TverskyLoss_LROnPla_gamma2 16/30/5e-4 aug" \

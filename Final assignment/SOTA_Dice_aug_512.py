@@ -180,9 +180,14 @@ def main(args):
 
 
         # Define the optimizer
-    # SMP的模型提供方便的參數分類
-    encoder_params = list(model.encoder.parameters())
-    decoder_params = list(model.decoder.parameters()) + list(model.segmentation_head.parameters())
+    # 適配 ConvNeXtUNet 模型結構的參數分類
+    encoder_params = []
+    decoder_params = []
+    for name, param in model.named_parameters():
+        if 'encoder' in name:
+            encoder_params.append(param)
+        else:
+            decoder_params.append(param)
 
 
     # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）

@@ -178,7 +178,7 @@ def main(args):
         "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
     )
     config.num_labels = 19  # 根據你的資料集修改
-
+    config.upsample_ratio = 1  # 不 downsample
     # 使用修改後的 config 初始化模型
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/segformer-b2-finetuned-cityscapes-1024-1024",

@@ -227,7 +227,8 @@ def main(args):
 
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            logits = outputs.logits  # [B, C, H, W]
+            loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
 
@@ -250,11 +251,13 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = model(images)
-                loss = criterion(outputs, labels)
+                outputs = model(images)
+                logits = outputs.logits  # [B, C, H, W]
+                loss = criterion(logits, labels)
                 losses.append(loss.item())
 
                 # 計算 Dice Loss
-                dice_loss_val = dice_loss_fn(outputs, labels)
+                dice_loss_val = dice_loss_fn(logits, labels)
                 dice_losses.append(dice_loss_val.item())
 
                 if i == 0:

@@ -161,7 +161,7 @@ def main(args):
         encoder_weights='imagenet',  # 預訓練權重
         in_channels=3,               # RGB 三通道影像
         classes=19                   # 語意分割的類別數目
-    )
+    ).to(device)  # 確保模型放到 GPU 上
 
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）

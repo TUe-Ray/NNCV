@@ -155,19 +155,14 @@ def main(args):
 
 
 
-    # # 使用SMP內建的更先進的模型 DeepLabV3+
-    # model = smp.DeepLabV3Plus(
-    #     encoder_name="tu-xception71",    # 使用更SOTA的TU-Xception71作為encoder
-    #     encoder_weights="imagenet",     # 使用ImageNet預訓練權重
-    #     in_channels=3,                  # RGB影像
-    #     classes=19,                     # Cityscapes有19個類別
-    # ).to(device)
+    # 使用SMP內建的更先進的模型 DeepLabV3+
+    model = smp.DeepLabV3Plus(
+        encoder_name='mit_b3',       # 可選 mit_b0 ~ mit_b5
+        encoder_weights='imagenet',  # 預訓練權重
+        in_channels=3,               # RGB 三通道影像
+        classes=19                   # 語意分割的類別數目
+    )
 
-
-    model = ConvNeXtUNet(
-        in_channels=3,  # RGB images
-        n_classes=19,   # 19 classes in the Cityscapes dataset
-    ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
@@ -180,14 +175,9 @@ def main(args):
 
 
         # Define the optimizer
-    # 適配 ConvNeXtUNet 模型結構的參數分類
-    encoder_params = []
-    decoder_params = []
-    for name, param in model.named_parameters():
-        if 'encoder' in name:
-            encoder_params.append(param)
-        else:
-            decoder_params.append(param)
+    # SMP的模型提供方便的參數分類
+    encoder_params = list(model.encoder.parameters())
+    decoder_params = list(model.decoder.parameters()) + list(model.segmentation_head.parameters())
 
 
     # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）

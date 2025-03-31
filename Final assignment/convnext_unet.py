@@ -3,17 +3,14 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
 from torchvision.models import convnext_base, ConvNeXt_Base_Weights
+import timm
 
 class ConvNeXtUNet(nn.Module):
     def __init__(self, in_channels=3, n_classes=19):
         super(ConvNeXtUNet, self).__init__()
         
         # Load pre-trained ConvNeXt_base as encoder with proper weights
-        weights = ConvNeXt_Base_Weights.IMAGENET1K_V1
-        self.encoder = convnext_base(weights=weights)
-        
-        # Remove the classifier head
-        self.encoder.classifier = nn.Identity()
+        self.encoder = timm.create_model("convnext_base_21k", pretrained=True, features_only=True)
         
         # 使用更通用的解碼器結構，適應ConvNeXt的特徵通道數
         # 這裡我們會先檢測ConvNeXt的特徵尺寸，而不是硬編碼

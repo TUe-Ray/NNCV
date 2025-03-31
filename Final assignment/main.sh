@@ -1,10 +1,10 @@
 wandb login
 
-python3 Segformer.py \
+python3 train_Dice_Convnext21k_aug_512.py \
     --data-dir ./data/cityscapes \
     --batch-size 16 \
     --epochs 30 \
-    --lr 0.0001 \
+    --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "Segformer-b2-finetuned-cityscapes-1024-1024 16/30/1e-4 aug" \
+    --experiment-id "convnext_base_21k 16/30/1e-4 aug" \

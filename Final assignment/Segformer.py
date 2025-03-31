@@ -279,7 +279,7 @@ def main(args):
                 dice_losses.append(dice_loss_val.item())
 
                 if i == 0:
-                    predictions = outputs.softmax(1).argmax(1)
+                    predictions = logits.softmax(1).argmax(1)
 
                     predictions = predictions.unsqueeze(1)
                     labels = labels.unsqueeze(1)

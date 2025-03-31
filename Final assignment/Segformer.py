@@ -238,6 +238,10 @@ def main(args):
             optimizer.zero_grad()
             outputs = model(images)
             logits = outputs.logits  # [B, C, H, W]
+            logits = torch.nn.functional.interpolate(
+                logits, size=labels.shape[1:], mode='bilinear', align_corners=False
+            )
+
             loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
@@ -263,6 +267,10 @@ def main(args):
                 outputs = model(images)
                 outputs = model(images)
                 logits = outputs.logits  # [B, C, H, W]
+
+                logits = torch.nn.functional.interpolate(
+                    logits, size=labels.shape[1:], mode='bilinear', align_corners=False
+                )
                 loss = criterion(logits, labels)
                 losses.append(loss.item())
 

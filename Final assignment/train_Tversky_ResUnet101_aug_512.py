@@ -167,7 +167,7 @@ def main(args):
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
-    criterion = smp.losses.TverskyLoss(mode='multiclass',alpha= 0.7, beta= 0.3, gamma = 1.5, ignore_index=255)
+    criterion = smp.losses.TverskyLoss(mode='multiclass',alpha= 0.3, beta= 0.7, gamma = 1.5, ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

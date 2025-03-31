@@ -40,7 +40,10 @@ from torchvision.transforms.v2 import (
 from resnet101_unet import ResUNet
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
-from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor
+from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
+
+
+
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
 def convert_to_train_id(label_img: torch.Tensor) -> torch.Tensor:
@@ -169,10 +172,14 @@ def main(args):
         num_workers=args.num_workers
     )
 
-    # Define the model
+    
+    config = SegformerConfig.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
+    config.upsample_ratio = 1  # 不 downsample
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/segformer-b2-finetuned-cityscapes-1024-1024",
-        num_labels=19, ignore_mismatched_sizes=True
+        config=config,
+        num_labels=19,
+        ignore_mismatched_sizes=True
     ).to(device)
 
     # Define the loss function

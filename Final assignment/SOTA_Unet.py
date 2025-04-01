@@ -35,7 +35,7 @@ class SOTAUnet(nn.Module):
         # 通過一次前向傳播來獲取特徵尺寸
         with torch.no_grad():
             # 創建一個虛擬輸入以獲取特徵尺寸
-            dummy_input = torch.zeros(1, 3, 224, 224)
+            dummy_input = torch.zeros(1, 3, 256, 256)
             features = self.encoder(dummy_input)
             
             # 打印特徵尺寸以進行調試

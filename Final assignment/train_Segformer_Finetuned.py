@@ -101,25 +101,8 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
+    processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024")
 
-    train_transform = Compose([
-        ToImage(), RandomHorizontalFlip(), Resize((512, 512)), ColorJitter(0.3,0.3,0.3,0.1),
-        RandomRotation(15), GaussianBlur(3), ToDtype(torch.float32, scale=True),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
-    ])
-
-    valid_transform = Compose([
-        ToImage(), Resize((512, 512)), ToDtype(torch.float32, scale=True),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
-    ])
-    
-
-
-
-    # 定義 Train 與 Validation 的 transforms
-    # ------------------------------------------------------------------------------
-    # Training: 使用多種資料增強
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
@@ -131,6 +114,15 @@ def main(args):
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
         Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
+
+    # Validation: 保持最簡單的處理
+    valid_transform = Compose([
+        ToImage(),
+        Resize((512, 512)),
+        ToDtype(torch.float32, scale=True),
+        Normalize(mean=processor.image_mean, std=processor.image_std)
+    ])
+
 
 
 
@@ -169,13 +161,15 @@ def main(args):
     
    # 載入預訓練的 config，然後修改 num_labels
     config = SegformerConfig.from_pretrained(
-        "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
+        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
+        num_channels=3,
+        num_labels = 19,
+        upsample_ratio = 1
     )
-    config.num_labels = 19  # 根據你的資料集修改
-    config.upsample_ratio = 1  # 不 downsample
+
     # 使用修改後的 config 初始化模型
     model = SegformerForSemanticSegmentation.from_pretrained(
-        "nvidia/segformer-b2-finetuned-cityscapes-1024-1024",
+        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
         config=config,
         ignore_mismatched_sizes=True  # 如果 label 數跟原本不同，這個參數是關鍵！
     ).to(device)

@@ -1,10 +1,10 @@
 wandb login
 
-python3 train_Dice_Segformer_aug.py \
+python3 train_Segformer_Finetuned.py \
     --data-dir ./data/cityscapes \
     --batch-size 16 \
     --epochs 30 \
-    --lr 0.0005 \
+    --lr 0.00001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "Segformerb5 finetuned_mean 16/30/5e-4 aug" \
+    --experiment-id "Finetuned_Segformerb5 finetuned_mean 16/30/1e-5 aug" \

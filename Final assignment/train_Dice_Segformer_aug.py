@@ -113,6 +113,7 @@ def main(args):
         ToDtype(torch.float32, scale=True),
         RandomRotation(degrees=30),
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
@@ -121,6 +122,7 @@ def main(args):
         ToImage(),
         Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
@@ -187,6 +189,7 @@ def main(args):
     #     mode='triangular2',
     #     cycle_momentum=False,           # 如果你用的是 Adam，要設 False
     # )
+    
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
     # Training loop
     best_valid_loss = float('inf')

@@ -63,6 +63,7 @@ class SOTAUnet(nn.Module):
         
         # 解碼器前向傳播，使用跳躍連接
         # 從最深層開始
+        x = features[3] # 最深層特徵
         x = self.decoder_blocks[0](x)
         x = F.interpolate(x, size=(features[2].shape[2], features[2].shape[3]), mode='bilinear', align_corners=False)
         x = torch.cat([x, features[2]], dim=1)
@@ -78,6 +79,7 @@ class SOTAUnet(nn.Module):
         x = self.decoder_blocks[3](x)
         
         # 最後上採樣至原始輸入尺寸
+        original_size = x.shape[2:]  # ← 加在一開始
         x = F.interpolate(x, size=original_size, mode='bilinear', align_corners=False)
         
         # 最終分類

@@ -37,7 +37,7 @@ from torchvision.transforms.v2 import (
     RandomCrop,
 )
 
-from convnext_unet import ConvNeXtUNet
+from SOTA_Unet import SOTAUnet
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 
@@ -160,7 +160,8 @@ def main(args):
     )
 
     # Define the model
-    model = ConvNeXtUNet(
+    model = SOTAUnet(
+        #backbone="swin_base_patch4_window7_224",  # 使用 ConvNeXt_base 作為 backbone
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)

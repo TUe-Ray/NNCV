@@ -5,13 +5,14 @@ import torch.nn.functional as F
 from torchvision.models import convnext_base, ConvNeXt_Base_Weights
 import timm
 
-class ConvNeXtUNet(nn.Module):
-    def __init__(self, in_channels=3, n_classes=19):
-        super(ConvNeXtUNet, self).__init__()
+class SOTAUnet(nn.Module):
+    def __init__(self, backbone="convnext_base.fb_in22k", in_channels=3, n_classes=19):
+        super(SOTAUnet, self).__init__()
         
         # Load pre-trained ConvNeXt_base as encoder with proper weights
-        convnext_unet.py
-        
+        self.encoder = timm.create_model(backbone, pretrained=True, features_only=True)
+        self.n_classes = n_classes
+
         # 使用更通用的解碼器結構，適應ConvNeXt的特徵通道數
         # 這裡我們會先檢測ConvNeXt的特徵尺寸，而不是硬編碼
         # 然後在forward函數中動態適應
@@ -35,19 +36,7 @@ class ConvNeXtUNet(nn.Module):
         with torch.no_grad():
             # 創建一個虛擬輸入以獲取特徵尺寸
             dummy_input = torch.zeros(1, 3, 224, 224)
-            features = []
-            
-            x = self.encoder.features[0](dummy_input)
-            features.append(x)
-            
-            x = self.encoder.features[1](x)
-            features.append(x)
-            
-            x = self.encoder.features[2](x)
-            features.append(x)
-            
-            x = self.encoder.features[3](x)
-            features.append(x)
+            features = self.encoder(dummy_input)
             
             # 打印特徵尺寸以進行調試
             print("Feature dimensions:")
@@ -69,28 +58,8 @@ class ConvNeXtUNet(nn.Module):
             self.final_conv = nn.Conv2d(feature_channels[0]//2, 19, kernel_size=1)
         
     def forward(self, x):
-        # 保存原始輸入尺寸，用於後續上採樣
-        original_size = (x.shape[2], x.shape[3])
-        
-        # 編碼器前向傳播 - 提取每個階段的特徵
-        features = []
-        
-        # ConvNeXt 有幾個特徵階段
-        # 階段 0 (stem)
-        x = self.encoder.features[0](x)
-        features.append(x)
-        
-        # 階段 1
-        x = self.encoder.features[1](x)
-        features.append(x)
-        
-        # 階段 2
-        x = self.encoder.features[2](x)
-        features.append(x)
-        
-        # 階段 3
-        x = self.encoder.features[3](x)
-        features.append(x)
+        features = self.encoder(x)  # 直接拿所有 stages
+
         
         # 解碼器前向傳播，使用跳躍連接
         # 從最深層開始

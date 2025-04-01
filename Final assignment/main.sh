@@ -1,6 +1,6 @@
 wandb login
 
-python3 train_Dice_Convnext21k_aug_512.py \
+python3 train_SotaUnet_Dice_aug_512.py \
     --data-dir ./data/cityscapes \
     --batch-size 16 \
     --epochs 30 \

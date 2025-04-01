@@ -58,6 +58,7 @@ class SOTAUnet(nn.Module):
             self.final_conv = nn.Conv2d(feature_channels[0]//2, 19, kernel_size=1)
         
     def forward(self, x):
+        original_size = x.shape[2:]  # ← 加在一開始
         features = self.encoder(x)  # 直接拿所有 stages
 
         
@@ -79,7 +80,7 @@ class SOTAUnet(nn.Module):
         x = self.decoder_blocks[3](x)
         
         # 最後上採樣至原始輸入尺寸
-        original_size = x.shape[2:]  # ← 加在一開始
+        
         x = F.interpolate(x, size=original_size, mode='bilinear', align_corners=False)
         
         # 最終分類

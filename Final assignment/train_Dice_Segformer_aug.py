@@ -37,9 +37,11 @@ from torchvision.transforms.v2 import (
     RandomCrop,
 )
 
-from SOTA_Unet import SOTAUnet
+from Model_Segformer import SegFormerLike
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
+from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
+
 
 
 # Mapping class IDs to train IDs
@@ -81,7 +83,7 @@ def get_args_parser():
 def main(args):
     # Initialize wandb for logging
     wandb.init(
-        project="5lsm0-cityscapes-segmentation-loss-combination",  # Project name in wandb
+        project="Compare_augmentation",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
         config=vars(args),  # Save hyperparameters
     )
@@ -99,7 +101,18 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
 
+    train_transform = Compose([
+        ToImage(), RandomHorizontalFlip(), Resize((512, 512)), ColorJitter(0.3,0.3,0.3,0.1),
+        RandomRotation(15), GaussianBlur(3), ToDtype(torch.float32, scale=True),
+        Normalize(mean=processor.image_mean, std=processor.image_std)
+    ])
+
+    valid_transform = Compose([
+        ToImage(), Resize((512, 512)), ToDtype(torch.float32, scale=True),
+        Normalize(mean=processor.image_mean, std=processor.image_std)
+    ])
     
 
 
@@ -116,7 +129,7 @@ def main(args):
         ToDtype(torch.float32, scale=True),
         RandomRotation(degrees=30),
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
     # Validation: 保持最簡單的處理
@@ -159,14 +172,11 @@ def main(args):
         num_workers=args.num_workers
     )
 
-    # Define the model
-    model = SOTAUnet(
-        #backbone="swinv2_base_window8_256",  # 使用 ConvNeXt_base 作為 backbone
-        backbone = "convnext_base.fb_in22k",
-        in_channels=3,  # RGB images
-        n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device)    
-
+    
+    model = SegFormerLike(
+        n_classes=19,
+        backbone_name='mit_b5'  # 你也可以換成 'mit_b0', 'mit_b4'...
+    ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
@@ -177,21 +187,8 @@ def main(args):
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
-        # Define the optimizer
-        # 分離 encoder 與其他部分的參數
-    encoder_params = []
-    decoder_params = []
-    for name, param in model.named_parameters():
-        if 'encoder' in name:
-            encoder_params.append(param)
-        else:
-            decoder_params.append(param)
+    optimizer = AdamW(model.parameters(), lr=args.lr)
 
-    # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
-    optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr * 0.1},
-        {'params': decoder_params, 'lr': args.lr}
-    ])
     # scheduler = CyclicLR(
     #     optimizer,
     #     base_lr=1e-5,
@@ -219,9 +216,12 @@ def main(args):
 
             optimizer.zero_grad()
             outputs = model(images)
-            
+            logits = outputs.logits  # [B, C, H, W]
+            logits = torch.nn.functional.interpolate(
+                logits, size=labels.shape[1:], mode='bilinear', align_corners=False
+            )
 
-            loss = criterion(outputs, labels)
+            loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
 
@@ -244,15 +244,21 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = model(images)
-                loss = criterion(outputs, labels)
+                outputs = model(images)
+                logits = outputs.logits  # [B, C, H, W]
+
+                logits = torch.nn.functional.interpolate(
+                    logits, size=labels.shape[1:], mode='bilinear', align_corners=False
+                )
+                loss = criterion(logits, labels)
                 losses.append(loss.item())
 
                 # 計算 Dice Loss
-                dice_loss_val = dice_loss_fn(outputs, labels)
+                dice_loss_val = dice_loss_fn(logits, labels)
                 dice_losses.append(dice_loss_val.item())
 
                 if i == 0:
-                    predictions = outputs.softmax(1).argmax(1)
+                    predictions = logits.softmax(1).argmax(1)
 
                     predictions = predictions.unsqueeze(1)
                     labels = labels.unsqueeze(1)

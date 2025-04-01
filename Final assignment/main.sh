@@ -1,10 +1,10 @@
 wandb login
 
-python3 train_SotaUnet_Dice_aug_512.py \
+python3 train_Dice_Segformer_aug.py \
     --data-dir ./data/cityscapes \
     --batch-size 16 \
     --epochs 30 \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "convnext_small.fb_in22k 16/30/5e-4 aug" \
+    --experiment-id "Segformer finetuned mean 16/30/5e-4 aug" \

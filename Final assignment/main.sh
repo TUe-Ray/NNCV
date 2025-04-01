@@ -7,4 +7,4 @@ python3 train_Segformer_Finetuned.py \
     --lr 0.000005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "Finetuned_Segformerb5 finetuned_mean 16/30/5e-6 aug" \
+    --experiment-id "Finetuned_Segformerb5 0.5_mean 16/30/5e-6 aug" \

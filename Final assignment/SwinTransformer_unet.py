@@ -10,7 +10,7 @@ class ConvNeXtUNet(nn.Module):
         super(ConvNeXtUNet, self).__init__()
         
         # Load pre-trained ConvNeXt_base as encoder with proper weights
-        self.encoder = timm.create_model("convnext_base.fb_in22k", pretrained=True, features_only=True)
+        convnext_unet.py
         
         # 使用更通用的解碼器結構，適應ConvNeXt的特徵通道數
         # 這裡我們會先檢測ConvNeXt的特徵尺寸，而不是硬編碼

@@ -83,7 +83,7 @@ def get_args_parser():
 def main(args):
     # Initialize wandb for logging
     wandb.init(
-        project="Compare_augmentation",  # Project name in wandb
+        project="5lsm0-cityscapes-segmentation-loss-combination",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
         config=vars(args),  # Save hyperparameters
     )
@@ -103,23 +103,7 @@ def main(args):
 
     processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
 
-    train_transform = Compose([
-        ToImage(), RandomHorizontalFlip(), Resize((512, 512)), ColorJitter(0.3,0.3,0.3,0.1),
-        RandomRotation(15), GaussianBlur(3), ToDtype(torch.float32, scale=True),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
-    ])
 
-    valid_transform = Compose([
-        ToImage(), Resize((512, 512)), ToDtype(torch.float32, scale=True),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
-    ])
-    
-
-
-
-    # 定義 Train 與 Validation 的 transforms
-    # ------------------------------------------------------------------------------
-    # Training: 使用多種資料增強
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
@@ -137,7 +121,7 @@ def main(args):
         ToImage(),
         Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
     # Load the dataset and make a split for training and validation
@@ -171,11 +155,16 @@ def main(args):
         shuffle=False,
         num_workers=args.num_workers
     )
+    config = SegformerConfig.from_pretrained(
+        "nvidia/mit-b5",
+        num_channels=3,
+        num_labels = 19,
 
+    )
     
-    model = SegFormerLike(
-        n_classes=19,
-        backbone_name='mit_b5'  # 你也可以換成 'mit_b0', 'mit_b4'...
+
+    model = SegformerForSemanticSegmentation.from_pretrained(
+    "nvidia/mit-b5",config=config
     ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）

@@ -132,13 +132,7 @@ def main(args):
         Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
-    # Validation: 保持最簡單的處理
-    valid_transform = Compose([
-        ToImage(),
-        Resize((512, 512)),
-        ToDtype(torch.float32, scale=True),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+
 
     # Load the dataset and make a split for training and validation
     train_dataset = Cityscapes(

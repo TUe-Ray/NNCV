@@ -7,4 +7,4 @@ python3 train_Dice_Segformer_aug.py \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "Segformer finetuned mean 16/30/5e-4 aug" \
+    --experiment-id "Segformerb5 finetuned_mean 16/30/5e-4 aug" \

@@ -7,4 +7,4 @@ python3 train_SotaUnet_Dice_aug_512.py \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "swin_base_patch4_window7_224 16/30/1e-4 aug" \
+    --experiment-id "swinv2_base_window8_256!!! 16/30/1e-4 aug" \

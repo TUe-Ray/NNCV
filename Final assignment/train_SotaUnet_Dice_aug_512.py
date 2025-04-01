@@ -110,7 +110,7 @@ def main(args):
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
-        Resize((512, 512)),
+        Resize((256, 256)),
         #RandomCrop((256, 256), pad_if_needed=True),
         ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         ToDtype(torch.float32, scale=True),
@@ -122,7 +122,7 @@ def main(args):
     # Validation: 保持最簡單的處理
     valid_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
@@ -161,10 +161,10 @@ def main(args):
 
     # Define the model
     model = SOTAUnet(
-        backbone="swin_base_patch4_window7_224",  # 使用 ConvNeXt_base 作為 backbone
+        backbone="swinv2_base_window8_256",  # 使用 ConvNeXt_base 作為 backbone
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device)
+    ).to(device)    
 
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）

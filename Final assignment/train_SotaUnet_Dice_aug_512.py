@@ -161,7 +161,7 @@ def main(args):
 
     # Define the model
     model = SOTAUnet(
-        backbone="swin_base_patch4_window7_224",  # 使用 ConvNeXt_base 作為 backbone
+        #backbone="swin_base_patch4_window7_224",  # 使用 ConvNeXt_base 作為 backbone
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)

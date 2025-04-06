@@ -83,7 +83,7 @@ def get_args_parser():
 def main(args):
     # Initialize wandb for logging
     wandb.init(
-        project="Dice Score",  # Project name in wandb
+        project="5lsm0-cityscapes-segmentation-loss-combination",  # Project name in wandb
         name=args.experiment_id,  # Experiment name in wandb
         config=vars(args),  # Save hyperparameters
     )

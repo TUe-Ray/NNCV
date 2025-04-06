@@ -112,8 +112,8 @@ def main(args):
         ToDtype(torch.float32, scale=True),
         RandomRotation(degrees=30),
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-        #Normalize(mean=processor.image_mean, std=processor.image_std)
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        Normalize(mean=processor.image_mean, std=processor.image_std)
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # Validation: 保持最簡單的處理
@@ -121,8 +121,8 @@ def main(args):
         ToImage(),
         Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
-        #Normalize(mean=processor.image_mean, std=processor.image_std)
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        Normalize(mean=processor.image_mean, std=processor.image_std)
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
 

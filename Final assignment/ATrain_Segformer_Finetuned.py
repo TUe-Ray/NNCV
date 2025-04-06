@@ -300,7 +300,10 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
-            scheduler.step(valid_loss)
+
+
+            scheduler.step()
+
             wandb.log({
                 "valid_loss": valid_loss,
                 "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log

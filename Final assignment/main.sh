@@ -1,6 +1,6 @@
 wandb login
 
-python3 ATrain_Segformer_Finetuned.py \
+python3 train_Segformer_Finetuned.py \
     --data-dir ./data/cityscapes \
     --batch-size 8 \
     --epochs 30 \

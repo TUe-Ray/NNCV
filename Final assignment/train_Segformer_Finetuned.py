@@ -299,14 +299,15 @@ def main(args):
             
             
             valid_loss = sum(losses) / len(losses)
-            valid_dice_score = 1- (sum(dice_losses) / len(dice_losses))  # 平均 Dice loss
-
+            valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
 
             scheduler.step()
+            print(f"[Epoch {epoch+1}] LR encoder: {optimizer.param_groups[0]['lr']:.6f}, decoder: {optimizer.param_groups[1]['lr']:.6f}")
+
 
             wandb.log({
                 "valid_loss": valid_loss,
-                "Dice Score": valid_dice_score,  # 新增：Dice loss score
+                "Dice Score": valid_dice_loss,  # 新增：Dice loss log
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

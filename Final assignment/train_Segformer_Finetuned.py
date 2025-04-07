@@ -307,7 +307,7 @@ def main(args):
 
             wandb.log({
                 "valid_loss": valid_loss,
-                "Dice Score": valid_dice_loss,  # 新增：Dice loss log
+                "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:

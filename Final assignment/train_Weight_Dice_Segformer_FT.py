@@ -37,11 +37,11 @@ from torchvision.transforms.v2 import (
     RandomCrop,
 )
 
-from Model_Segformer import SegFormerLike
+
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
-
+from WeightedDiceLoss import WeightedDiceLoss
 
 
 # Mapping class IDs to train IDs
@@ -101,30 +101,32 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
-
+    processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024")
 
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         #RandomCrop((256, 256), pad_if_needed=True),
         ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         ToDtype(torch.float32, scale=True),
         RandomRotation(degrees=30),
         GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         Normalize(mean=processor.image_mean, std=processor.image_std)
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # Validation: 保持最簡單的處理
     valid_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
-        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         Normalize(mean=processor.image_mean, std=processor.image_std)
+        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
+
+
+
 
     # Load the dataset and make a split for training and validation
     train_dataset = Cityscapes(
@@ -157,16 +159,21 @@ def main(args):
         shuffle=False,
         num_workers=args.num_workers
     )
+
+    
+   # 載入預訓練的 config，然後修改 num_labels
     config = SegformerConfig.from_pretrained(
-        "nvidia/mit-b5",
+        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
         num_channels=3,
         num_labels = 19,
-
+        upsample_ratio = 1
     )
-    
 
+    # 使用修改後的 config 初始化模型
     model = SegformerForSemanticSegmentation.from_pretrained(
-    "nvidia/mit-b5",config=config
+        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
+        config=config,
+        ignore_mismatched_sizes=True  # 如果 label 數跟原本不同，這個參數是關鍵！
     ).to(device)
     # Define the loss function
     # 使用 SMP 內建的 DiceLoss（針對多分類任務）
@@ -174,12 +181,25 @@ def main(args):
     
     
     #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
-    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
+    criterion = WeightedDiceLoss(mode='multiclass', ignore_index=255, class_weights=class_weights)  # 新增：Weighted Dice Loss
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
-    optimizer = AdamW(model.parameters(), lr=args.lr)
+        # Define the optimizer
+        # 分離 encoder 與其他部分的參數
+    encoder_params = []
+    decoder_params = []
+    for name, param in model.named_parameters():
+        if 'encoder' in name:
+            encoder_params.append(param)
+        else:
+            decoder_params.append(param)
 
+    # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
+    optimizer = AdamW([
+        {'params': encoder_params, 'lr': args.lr * 0.1},
+        {'params': decoder_params, 'lr': args.lr}
+    ])
     # scheduler = CyclicLR(
     #     optimizer,
     #     base_lr=1e-5,
@@ -190,7 +210,13 @@ def main(args):
     #     cycle_momentum=False,           # 如果你用的是 Adam，要設 False
     # )
     
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
+    
+    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
+
+    
+    
+    
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None
@@ -235,8 +261,8 @@ def main(args):
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = model(images)
                 
+                outputs = model(images)
                 logits = outputs.logits  # [B, C, H, W]
 
                 logits = torch.nn.functional.interpolate(
@@ -274,7 +300,11 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             valid_dice_loss = sum(dice_losses) / len(dice_losses)  # 平均 Dice loss
-            scheduler.step(valid_loss)
+
+            scheduler.step()
+            print(f"[Epoch {epoch+1}] LR encoder: {optimizer.param_groups[0]['lr']:.6f}, decoder: {optimizer.param_groups[1]['lr']:.6f}")
+
+
             wandb.log({
                 "valid_loss": valid_loss,
                 "valid_dice_loss": valid_dice_loss,  # 新增：Dice loss log

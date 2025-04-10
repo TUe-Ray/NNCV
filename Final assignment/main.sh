@@ -1,10 +1,10 @@
 wandb login
 
-python3 train_Segformer_Finetuned.py \
+python3 train_Weight_Dice_Segformer_FT.py \
     --data-dir ./data/cityscapes \
-    --batch-size 2 \
+    --batch-size 16 \
     --epochs 30 \
-    --lr 0.00001 \
+    --lr 0.0001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "FinTun_Segforb5 1024 FT_mean 4/30/1e-5_1e-7 aug" \
+    --experiment-id "FT_SegForB5 WeightDice_512 FT_mean 16/30/1e-4_1e-6 aug" \

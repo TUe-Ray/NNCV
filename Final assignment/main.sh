@@ -1,10 +1,10 @@
 wandb login
 
-python3 train_Segformer_Finetuned.py \
+python3 test_load_model.py \
     --data-dir ./data/cityscapes \
     --batch-size 8 \
-    --epochs 30 \
+    --epochs 2 \
     --lr 0.0001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "FinTun_Segforb5 FinTun_mean 8/30/1e-4_1e-6 aug" \
+    --experiment-id "load model" \

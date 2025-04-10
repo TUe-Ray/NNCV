@@ -64,7 +64,7 @@ def get_args_parser():
 
 
 def main(args):
-    wandb.init(project="5lsm0-cityscapes-segmentation", name=args.experiment_id, config=vars(args))
+    wandb.init(project="5lsm0-cityscapes-segmentation-loss-combination", name=args.experiment_id, config=vars(args))
 
     output_dir = os.path.join("checkpoints", args.experiment_id)
     os.makedirs(output_dir, exist_ok=True)

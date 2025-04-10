@@ -2,7 +2,7 @@ wandb login
 
 python3 train_Segformer_Finetuned.py \
     --data-dir ./data/cityscapes \
-    --batch-size 4 \
+    --batch-size 2 \
     --epochs 30 \
     --lr 0.00001 \
     --num-workers 10 \

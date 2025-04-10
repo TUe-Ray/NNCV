@@ -220,8 +220,7 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            outputs = model(images)
-            logits = outputs.logits  # [B, C, H, W]
+            logits = model(images)
             logits = torch.nn.functional.interpolate(
                 logits, size=labels.shape[1:], mode='bilinear', align_corners=False
             )
@@ -248,9 +247,7 @@ def main(args):
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = model(images)
-                outputs = model(images)
-                logits = outputs.logits  # [B, C, H, W]
+                logits = model(images)
 
                 logits = torch.nn.functional.interpolate(
                     logits, size=labels.shape[1:], mode='bilinear', align_corners=False

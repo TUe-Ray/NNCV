@@ -261,7 +261,7 @@ def main(args):
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = model(images)
+                
                 outputs = model(images)
                 logits = outputs.logits  # [B, C, H, W]
 

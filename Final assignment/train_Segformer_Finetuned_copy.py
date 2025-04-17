@@ -1,10 +1,9 @@
 """
-Training script for SegFormer with FLOPs, mean Dice, and mixed precision.
+Training script for SegFormer with mean Dice and mixed precision.
 """
 import os
 from argparse import ArgumentParser
 import wandb
-torch_import = "torch"
 import torch
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
@@ -13,7 +12,6 @@ from torchvision.transforms.v2 import Compose, Normalize, Resize, ToImage, ToDty
 import segmentation_models_pytorch as smp
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
-from ptflops import get_model_complexity_info
 from torch.cuda.amp import autocast, GradScaler
 
 # ID mappings
@@ -22,8 +20,6 @@ train_id_to_color = {cls.train_id: cls.color for cls in Cityscapes.classes if cl
 train_id_to_color[255] = (0,0,0)
 
 def convert_to_train_id(x): return x.apply_(lambda v: id_to_trainid[v])
-
-def compute_flops(model, res): macs,_=get_model_complexity_info(model,res,as_strings=False,print_per_layer_stat=False,verbose=False); return macs*2
 
 def dice_per_class(pred, tgt, n):
     pred, tgt = pred.view(-1), tgt.view(-1)
@@ -114,9 +110,9 @@ def main(args):
             with autocast():
                 preds=model(imgs).logits.argmax(1)
             dsum+=dice_per_class(preds,lbls,ncls).cpu(); cnt+=1
-    mean_dice=dsum/cnt; flops=compute_flops(model.to("cpu"),(3,1024,1024))/1e9
-    table=wandb.Table(columns=["Metric","Value"]); table.add_data("FLOPs(G)",f"{flops:.2f}")
+    mean_dice=dsum/cnt
+    table=wandb.Table(columns=["Metric","Value"])
     for c in range(ncls): table.add_data(f"Dice_{c}",f"{mean_dice[c]:.4f}")
-    wandb.log({"FLOPs_and_MeanDice":table}); wandb.finish()
+    wandb.log({"MeanDice":table}); wandb.finish()
 
 if __name__=="__main__": main(get_args_parser().parse_args())

@@ -135,7 +135,7 @@ def main(args):
             scaler.step(optimizer)
             scaler.update()
 
-            wandb.log({"train_loss": loss.item(), "lr": optimizer.param_groups[1]['lr'], "epoch": epoch+1}, step=epoch*len(train_loader)+i)
+            wandb.log({"train_loss": loss.item(), "learning_rate": optimizer.param_groups[1]['lr'], "epoch": epoch+1}, step=epoch*len(train_loader)+i)
 
         # Validation
         model.eval()

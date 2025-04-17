@@ -22,6 +22,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
+from WeightedDiceLoss import WeightedDiceLoss
 
 from torchvision.transforms.v2 import (
     Compose,
@@ -41,7 +42,6 @@ from torchvision.transforms.v2 import (
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
-
 
 
 # Mapping class IDs to train IDs
@@ -100,6 +100,10 @@ def main(args):
 
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    class_weights = torch.tensor([3.045383480249677, 12.862127312658735, 4.509888876996228, 38.15694593009221, 35.25278401818165, 31.48260832348194, 45.79224481584843, 39.69406346608758, 6.0639281852733715, 32.16484408952653, 17.10923371690307, 31.5633201415795, 47.33397232867321, 11.610673599796504, 44.60042610251128, 45.23705196392834, 45.28288297518183, 48.14776939659858, 41.924631833506794], device=device)
+
+
 
     processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024")
 
@@ -181,7 +185,7 @@ def main(args):
     
     
     #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
-    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
+    criterion = WeightedDiceLoss(mode='multiclass', ignore_index=255, class_weights=class_weights)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

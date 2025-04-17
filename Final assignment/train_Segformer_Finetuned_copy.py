@@ -19,14 +19,13 @@ from torchvision.transforms.v2 import (
     RandomRotation,
     ColorJitter,
     GaussianBlur,
-    InterpolationMode,
-    RandomCrop,
 )
 
 import segmentation_models_pytorch as smp
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
 
+torch.backends.cudnn.benchmark = True  # Enable if inputs have fixed size
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -43,259 +42,154 @@ def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
 
     for train_id, color in train_id_to_color.items():
         mask = prediction[:, 0] == train_id
-
         for i in range(3):
             color_image[:, i][mask] = color[i]
-
     return color_image
 
 
 def get_args_parser():
-
-    parser = ArgumentParser("Training script for a PyTorch U-Net model")
-    parser.add_argument("--data-dir", type=str, default="./data/cityscapes", help="Path to the training data")
+    parser = ArgumentParser("Training script with mixed precision and per-category Dice metrics")
+    parser.add_argument("--data-dir", type=str, default="./data/cityscapes", help="Path to training data")
     parser.add_argument("--batch-size", type=int, default=64, help="Training batch size")
     parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
+    parser.add_argument("--num-workers", type=int, default=10, help="Number of dataloader workers")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--experiment-id", type=str, default="unet-training", help="Experiment ID for Weights & Biases")
-
+    parser.add_argument("--experiment-id", type=str, default="unet-mixprec", help="WandB experiment ID")
     return parser
 
 
 def main(args):
-    # Initialize wandb for logging
-    wandb.init(
-        project="5lsm0-cityscapes-segmentation-loss-combination",  # Project name in wandb
-        name=args.experiment_id,  # Experiment name in wandb
-        config=vars(args),  # Save hyperparameters
-    )
+    # Initialize wandb
+    wandb.init(project="5lsm0-cityscapes-segmentation-loss-combination", name=args.experiment_id, config=vars(args))
 
-    # Create output directory if it doesn't exist
+    # Output dir
     output_dir = os.path.join("checkpoints", args.experiment_id)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Set seed for reproducability
+    # Seeds
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
 
-    # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Mixed precision scaler
+    scaler = torch.cuda.amp.GradScaler()
+
+    # Processor and transforms
     processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024")
-
     train_transform = Compose([
-        ToImage(),
-        RandomHorizontalFlip(p=0.5),
-        Resize((1024, 1024)),
-        ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-        ToDtype(torch.float32, scale=True),
-        RandomRotation(degrees=30),
-        GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        ToImage(), RandomHorizontalFlip(0.5), Resize((1024, 1024)), ColorJitter(0.3,0.3,0.3,0.1),
+        ToDtype(torch.float32, scale=True), RandomRotation(30), GaussianBlur(3,(0.1,2.0)),
         Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
-
     valid_transform = Compose([
-        ToImage(),
-        Resize((1024, 1024)),
-        ToDtype(torch.float32, scale=True),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
+        ToImage(), Resize((1024,1024)), ToDtype(torch.float32, scale=True), Normalize(mean=processor.image_mean, std=processor.image_std)
     ])
 
-    train_dataset = Cityscapes(
-        args.data_dir,
-        split="train",
-        mode="fine",
-        target_type="semantic",
-        transforms=train_transform
-    )
-    valid_dataset = Cityscapes(
-        args.data_dir,
-        split="val",
-        mode="fine",
-        target_type="semantic",
-        transforms=valid_transform
-    )
+    # Datasets and loaders
+    train_ds = wrap_dataset_for_transforms_v2(Cityscapes(args.data_dir, split="train", mode="fine", target_type="semantic", transforms=train_transform))
+    valid_ds = wrap_dataset_for_transforms_v2(Cityscapes(args.data_dir, split="val", mode="fine", target_type="semantic", transforms=valid_transform))
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valid_loader = DataLoader(valid_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
-    valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
-
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.num_workers
-    )
-    valid_dataloader = DataLoader(
-        valid_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.num_workers
-    )
-
-    config = SegformerConfig.from_pretrained(
-        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
-        num_channels=3,
-        num_labels=19,
-        upsample_ratio=1
-    )
-
+    # Model setup
+    config = SegformerConfig.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024", num_channels=3, num_labels=19, upsample_ratio=1)
     model = SegformerForSemanticSegmentation.from_pretrained(
-        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024",
-        config=config,
-        ignore_mismatched_sizes=True
+        "nvidia/segformer-b5-finetuned-cityscapes-1024-1024", config=config, ignore_mismatched_sizes=True
     ).to(device)
 
-    # Number of classes for per-category dice
+    # Class names
     num_classes = model.config.num_labels
-    # Prepare class names by train_id order
     class_names = [None] * num_classes
     for cls in Cityscapes.classes:
         if cls.train_id < num_classes:
             class_names[cls.train_id] = cls.name
 
+    # Losses
     criterion = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
-    dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
+    dice_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)
 
-    encoder_params = []
-    decoder_params = []
-    for name, param in model.named_parameters():
-        if 'encoder' in name:
-            encoder_params.append(param)
-        else:
-            decoder_params.append(param)
-
-    optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr * 0.1},
-        {'params': decoder_params, 'lr': args.lr}
-    ])
+    # Optimizer & scheduler
+    enc_params, dec_params = [], []
+    for n,p in model.named_parameters(): (enc_params if 'encoder' in n else dec_params).append(p)
+    optimizer = AdamW([{'params':enc_params,'lr':args.lr*0.1},{'params':dec_params,'lr':args.lr}])
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-7)
 
-    best_valid_loss = float('inf')
-    current_best_model_path = None
+    best_valid = float('inf')
+    best_path = None
 
     for epoch in range(args.epochs):
-        print(f"Epoch {epoch+1:04}/{args.epochs:04}")
-
+        print(f"Epoch {epoch+1}/{args.epochs}")
         model.train()
-        for i, (images, labels) in enumerate(train_dataloader):
-            labels = convert_to_train_id(labels)
-            images, labels = images.to(device), labels.to(device)
-            labels = labels.long().squeeze(1)
+        for i,(imgs, lbls) in enumerate(train_loader):
+            lbls = convert_to_train_id(lbls).long().squeeze(1).to(device)
+            imgs = imgs.to(device)
 
             optimizer.zero_grad()
-            outputs = model(images)
-            logits = outputs.logits
-            logits = torch.nn.functional.interpolate(
-                logits, size=labels.shape[1:], mode='bilinear', align_corners=False
-            )
+            with torch.cuda.amp.autocast():
+                out = model(imgs).logits
+                out = torch.nn.functional.interpolate(out, size=lbls.shape[1:], mode='bilinear', align_corners=False)
+                loss = criterion(out, lbls)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
-            loss = criterion(logits, labels)
-            loss.backward()
-            optimizer.step()
-
-            wandb.log({
-                "train_loss": loss.item(),
-                "learning_rate": optimizer.param_groups[1]['lr'],
-                "epoch": epoch + 1,
-            }, step=epoch * len(train_dataloader) + i)
+            wandb.log({"train_loss": loss.item(), "lr": optimizer.param_groups[1]['lr'], "epoch": epoch+1}, step=epoch*len(train_loader)+i)
 
         # Validation
         model.eval()
+        val_losses, val_dices = [], []
+        if epoch == args.epochs-1:
+            inters = torch.zeros(num_classes, device=device); preds_sum = torch.zeros_like(inters); labels_sum = torch.zeros_like(inters)
+
         with torch.no_grad():
-            losses = []
-            dice_losses = []
-            # Prepare accumulators for last-epoch per-class dice
-            if epoch == args.epochs - 1:
-                inters = torch.zeros(num_classes, device=device)
-                preds_sum = torch.zeros(num_classes, device=device)
-                labels_sum = torch.zeros(num_classes, device=device)
+            for j,(imgs, lbls) in enumerate(valid_loader):
+                lbls = convert_to_train_id(lbls).long().squeeze(1).to(device)
+                imgs = imgs.to(device)
+                with torch.cuda.amp.autocast():
+                    out = model(imgs).logits
+                    out = torch.nn.functional.interpolate(out, size=lbls.shape[1:], mode='bilinear', align_corners=False)
+                    lossv = criterion(out, lbls)
+                val_losses.append(lossv.item())
+                val_dices.append(dice_fn(out, lbls).item())
 
-            for i, (images, labels) in enumerate(valid_dataloader):
-                labels = convert_to_train_id(labels)
-                images, labels = images.to(device), labels.to(device)
-                labels = labels.long().squeeze(1)
-
-                outputs = model(images)
-                logits = outputs.logits
-                logits = torch.nn.functional.interpolate(
-                    logits, size=labels.shape[1:], mode='bilinear', align_corners=False
-                )
-                loss = criterion(logits, labels)
-                losses.append(loss.item())
-
-                dice_loss_val = dice_loss_fn(logits, labels)
-                dice_losses.append(dice_loss_val.item())
-
-                # accumulate per-class counts on final epoch
-                if epoch == args.epochs - 1:
-                    preds = logits.softmax(1).argmax(1)
+                if epoch == args.epochs-1:
+                    pred = out.softmax(1).argmax(1)
                     for c in range(num_classes):
-                        p_mask = preds == c
-                        l_mask = labels == c
-                        inters[c] += (p_mask & l_mask).sum()
-                        preds_sum[c] += p_mask.sum()
-                        labels_sum[c] += l_mask.sum()
+                        pm = pred==c; lm = lbls==c
+                        inters[c] += (pm & lm).sum(); preds_sum[c] += pm.sum(); labels_sum[c] += lm.sum()
 
-                if i == 0:
-                    predictions = logits.softmax(1).argmax(1).unsqueeze(1)
-                    gt_labels = labels.unsqueeze(1)
-                    preds_color = convert_train_id_to_color(predictions)
-                    labels_color = convert_train_id_to_color(gt_labels)
-                    wandb.log({
-                        "predictions": [wandb.Image(make_grid(preds_color.cpu(), nrow=8).permute(1,2,0).numpy())],
-                        "labels": [wandb.Image(make_grid(labels_color.cpu(), nrow=8).permute(1,2,0).numpy())],
-                    }, step=(epoch + 1) * len(train_dataloader) - 1)
+                if j==0:
+                    p_color = convert_train_id_to_color(pred.unsqueeze(1)); l_color = convert_train_id_to_color(lbls.unsqueeze(1))
+                    wandb.log({"preds":[wandb.Image(make_grid(p_color.cpu(),nrow=8).permute(1,2,0).numpy())],"gts":[wandb.Image(make_grid(l_color.cpu(),nrow=8).permute(1,2,0).numpy())]},step=(epoch+1)*len(train_loader)-1)
 
-            valid_loss = sum(losses) / len(losses)
-            valid_dice_loss = sum(dice_losses) / len(dice_losses)
+        avg_loss = sum(val_losses)/len(val_losses)
+        avg_dice = sum(val_dices)/len(val_dices)
+        scheduler.step()
+        print(f"[Epoch {epoch+1}] LR enc:{optimizer.param_groups[0]['lr']:.6f}, dec:{optimizer.param_groups[1]['lr']:.6f}")
+        wandb.log({"valid_loss":avg_loss, "valid_dice_loss":avg_dice}, step=(epoch+1)*len(train_loader)-1)
 
-            scheduler.step()
-            print(f"[Epoch {epoch+1}] LR encoder: {optimizer.param_groups[0]['lr']:.6f}, decoder: {optimizer.param_groups[1]['lr']:.6f}")
+        if avg_loss < best_valid:
+            best_valid = avg_loss
+            if best_path: os.remove(best_path)
+            best_path = os.path.join(output_dir, f"best_ep{epoch+1:02}-loss{avg_loss:.4f}.pth")
+            torch.save(model.state_dict(), best_path)
 
-            wandb.log({
-                "valid_loss": valid_loss,
-                "valid_dice_loss": valid_dice_loss,
-            }, step=(epoch + 1) * len(train_dataloader) - 1)
-
-            if valid_loss < best_valid_loss:
-                best_valid_loss = valid_loss
-                if current_best_model_path:
-                    os.remove(current_best_model_path)
-                current_best_model_path = os.path.join(
-                    output_dir,
-                    f"best_model-epoch={epoch:04}-val_loss={valid_loss:04}.pth"
-                )
-                torch.save(model.state_dict(), current_best_model_path)
-
-            # After last epoch validation, compute and print per-class mean dice
-            if epoch == args.epochs - 1:
-                dice_per_class = (2 * inters) / (preds_sum + labels_sum + 1e-8)
-                # Console output as markdown table
-                print("\nMean Dice per Category (Final Epoch):")
-                print("| Class | Mean Dice |")
-                print("|---|---|")
-                for idx, name in enumerate(class_names):
-                    print(f"| {name} | {dice_per_class[idx].item():.4f} |")
-                # Log to wandb as a table
-                table_data = [[class_names[i], float(dice_per_class[i].item())] for i in range(num_classes)]
-                table = wandb.Table(data=table_data, columns=["class","mean_dice"])
-                wandb.log({"mean_dice_per_category": table})
+        # Final epoch per-class dice
+        if epoch == args.epochs-1:
+            dice_pc = (2*inters)/(preds_sum+labels_sum+1e-8)
+            print("\nMean Dice per Category (Final Epoch):")
+            print("| Class | Mean Dice |\n|---|---|")
+            for i,name in enumerate(class_names): print(f"| {name} | {dice_pc[i]:.4f} |")
+            table = wandb.Table(data=[[class_names[i], float(dice_pc[i])] for i in range(num_classes)], columns=["class","mean_dice"])
+            wandb.log({"mean_dice_per_category":table})
 
     print("Training complete!")
-
-    # Save the model
-    torch.save(
-        model.state_dict(),
-        os.path.join(
-            output_dir,
-            f"final_model-epoch={epoch:04}-val_loss={valid_loss:04}.pth"
-        )
-    )
+    # Save final
+    torch.save(model.state_dict(), os.path.join(output_dir, f"final_ep{epoch+1:02}-loss{avg_loss:.4f}.pth"))
     wandb.finish()
 
 if __name__ == "__main__":
-    parser = get_args_parser()
-    args = parser.parse_args()
+    args = get_args_parser().parse_args()
     main(args)

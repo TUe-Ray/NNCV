@@ -101,9 +101,27 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    class_weights = torch.tensor([3.045383480249677, 12.862127312658735, 4.509888876996228, 38.15694593009221, 35.25278401818165, 31.48260832348194, 45.79224481584843, 39.69406346608758, 6.0639281852733715, 32.16484408952653, 17.10923371690307, 31.5633201415795, 47.33397232867321, 11.610673599796504, 44.60042610251128, 45.23705196392834, 45.28288297518183, 48.14776939659858, 41.924631833506794], device=device)
-
-
+    class_weights = torch.tensor([
+    0.0396,  # road
+    0.0410,  # sidewalk
+    0.0233,  # building
+    0.0471,  # wall
+    0.0502,  # fence
+    0.1394,  # pole
+    0.0788,  # traffic light
+    0.0775,  # traffic sign
+    0.0161,  # vegetation
+    0.0417,  # terrain
+    0.0191,  # sky
+    0.0569,  # person
+    0.0699,  # rider
+    0.0156,  # car
+    0.0501,  # truck
+    0.0241,  # bus
+    0.0198,  # train
+    0.0624,  # motorcycle
+    0.0784,  # license plate
+])
 
     processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-cityscapes-1024-1024")
 

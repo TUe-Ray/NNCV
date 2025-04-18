@@ -226,7 +226,7 @@ def main(args):
 
     # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
     optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr * 0.1},
+        {'params': encoder_params, 'lr': args.lr},
         {'params': decoder_params, 'lr': args.lr}
     ])
     # scheduler = CyclicLR(

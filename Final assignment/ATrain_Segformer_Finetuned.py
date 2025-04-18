@@ -106,7 +106,7 @@ def main(args):
     train_transform = Compose([
         ToImage(),
         RandomHorizontalFlip(p=0.5),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         #RandomCrop((256, 256), pad_if_needed=True),
         ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         ToDtype(torch.float32, scale=True),
@@ -119,7 +119,7 @@ def main(args):
     # Validation: 保持最簡單的處理
     valid_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=processor.image_mean, std=processor.image_std)
         #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -319,7 +319,23 @@ def main(args):
                 )
                 torch.save(model.state_dict(), current_best_model_path)
         
+    inters = torch.zeros(num_classes, device=device) 
+    preds_sum = torch.zeros_like(inters) 
+    labels_sum = torch.zeros_like(inters)
+    num_classes = model.config.num_labels
+    class_names = [None] * num_classes
+    for cls in Cityscapes.classes:
+        if cls.train_id < num_classes:
+            class_names[cls.train_id] = cls.name    
     print("Training complete!")
+    # Final epoch per-class dice
+    if epoch == args.epochs-1:
+        dice_pc = (2*inters)/(preds_sum+labels_sum+1e-8)
+        print("\nMean Dice per Category (Final Epoch):")
+        print("| Class | Mean Dice |\n|---|---|")
+        for i,name in enumerate(class_names): print(f"| {name} | {dice_pc[i]:.4f} |")
+        table = wandb.Table(data=[[class_names[i], float(dice_pc[i])] for i in range(num_classes)], columns=["class","mean_dice"])
+        wandb.log({"mean_dice_per_category":table})
 
     # Save the model
     torch.save(

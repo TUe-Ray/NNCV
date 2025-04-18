@@ -129,15 +129,15 @@ def main(args):
 
     train_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        #Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
 
 
         
-        # RandomHorizontalFlip(p=0.5),
-        # #RandomCrop((256, 256), pad_if_needed=True),
+         RandomHorizontalFlip(p=0.5),
+        RandomCrop((512, 512), pad_if_needed=True),
         # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-        # RandomRotation(degrees=30),
+        RandomRotation(degrees=30),
         # GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
 
 
@@ -226,7 +226,7 @@ def main(args):
 
     # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
     optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr},
+        {'params': encoder_params, 'lr': args.lr * 0.1},
         {'params': decoder_params, 'lr': args.lr}
     ])
     # scheduler = CyclicLR(

@@ -134,7 +134,7 @@ def main(args):
 
 
         
-         RandomHorizontalFlip(p=0.5),
+        RandomHorizontalFlip(p=0.5),
         RandomCrop((512, 512), pad_if_needed=True),
         # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         RandomRotation(degrees=30),
@@ -226,7 +226,7 @@ def main(args):
 
     # 定義優化器，給 encoder 使用較小的學習率（例如：0.1 * args.lr）
     optimizer = AdamW([
-        {'params': encoder_params, 'lr': args.lr * 0.1},
+        {'params': encoder_params, 'lr': args.lr },
         {'params': decoder_params, 'lr': args.lr}
     ])
     # scheduler = CyclicLR(

@@ -105,15 +105,17 @@ def main(args):
 
     train_transform = Compose([
         ToImage(),
-        RandomHorizontalFlip(p=0.5),
         Resize((512, 512)),
-        #RandomCrop((256, 256), pad_if_needed=True),
-        ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-        ToDtype(torch.float32, scale=True),
-        RandomRotation(degrees=30),
-        GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-        Normalize(mean=processor.image_mean, std=processor.image_std)
-        #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        
+        # RandomHorizontalFlip(p=0.5),
+        
+        # #RandomCrop((256, 256), pad_if_needed=True),
+        # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+        # ToDtype(torch.float32, scale=True),
+        # RandomRotation(degrees=30),
+        # GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        # Normalize(mean=processor.image_mean, std=processor.image_std)
+        # #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # Validation: 保持最簡單的處理

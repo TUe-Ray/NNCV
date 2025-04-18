@@ -7,4 +7,4 @@ python3 ATrain_Segformer_Finetuned.py \
     --lr 0.0001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "FT_SegForB5 512Dice FT_mean 8/20/1e-4_1e-7 aug" \
+    --experiment-id "NoAug FT_SegForB5 512Dice FT_mean 8/20/1e-4_1e-7 " \

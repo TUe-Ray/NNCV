@@ -41,6 +41,7 @@ from torchvision.transforms.v2 import (
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 from transformers import SegformerForSemanticSegmentation, SegformerImageProcessor, SegformerConfig
+from my_loss_combinations import CombinedDiceCELoss
 
 
 
@@ -184,7 +185,7 @@ def main(args):
     
     
     #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
-    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
+    criterion = CombinedDiceCELoss(weight_dice=0.3, weight_ce=0.7, ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

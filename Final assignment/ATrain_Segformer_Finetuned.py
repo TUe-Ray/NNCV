@@ -105,7 +105,7 @@ def main(args):
 
     train_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
         
         # RandomHorizontalFlip(p=0.5),
@@ -122,7 +122,7 @@ def main(args):
     # Validation: 保持最簡單的處理
     valid_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=processor.image_mean, std=processor.image_std)
         #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))

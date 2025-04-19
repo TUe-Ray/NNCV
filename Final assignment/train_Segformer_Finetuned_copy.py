@@ -137,6 +137,8 @@ def main(args):
         # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         RandomRotation(degrees=30),
         # GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+
+        
         Normalize(mean=processor.image_mean, std=processor.image_std)
         #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])

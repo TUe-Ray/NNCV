@@ -170,8 +170,8 @@ def main(args):
     # 注意：此處使用 mode='multiclass'，並可設定 ignore_index 來忽略 void 類別
     
     
-    #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
-    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
+    criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
+    #criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 
@@ -199,7 +199,9 @@ def main(args):
     #     mode='triangular2',
     #     cycle_momentum=False,           # 如果你用的是 Adam，要設 False
     # )
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
+    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=2)
+
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None

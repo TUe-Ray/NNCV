@@ -37,7 +37,7 @@ from torchvision.transforms.v2 import (
     RandomCrop,
 )
 
-from resnet101_unet import ResUNet
+from Model_resnet101_unet import ResUNet
 import segmentation_models_pytorch as smp 
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, SequentialLR, LinearLR, CyclicLR
 

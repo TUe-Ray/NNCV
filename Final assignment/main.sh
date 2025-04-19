@@ -7,4 +7,4 @@ python3 train_Segformer_Finetuned_copy.py \
     --lr 0.0001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id " NoAug FT_SegForB5_forRobutness 1024  2/10/1e-4_1e-7" \
+    --experiment-id " NoAug FT_SegForB5_forRobutnesss 1024  2/10/1e-4_1e-7" \

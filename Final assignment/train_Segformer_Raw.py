@@ -211,6 +211,7 @@ def main(args):
     
     #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
     criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
+    
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

@@ -127,18 +127,18 @@ def main(args):
 
     train_transform = Compose([
         ToImage(),
-        #Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
 
 
         
-        RandomHorizontalFlip(p=0.5),
-        RandomCrop((512, 512), pad_if_needed=True),
-        # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-        RandomRotation(degrees=30),
-        # GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        # RandomHorizontalFlip(p=0.5),
+        # RandomCrop((512, 512), pad_if_needed=True),
+        # # ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+        # RandomRotation(degrees=30),
+        # # GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
 
-        
+
         Normalize(mean=processor.image_mean, std=processor.image_std)
         #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -146,7 +146,7 @@ def main(args):
     # Validation: 保持最簡單的處理
     valid_transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((1024, 1024)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=processor.image_mean, std=processor.image_std)
         #Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -208,7 +208,8 @@ def main(args):
     
     
     #criterion = smp.losses.DiceLoss(mode='multiclass', log_loss = True, ignore_index=255)
-    criterion = WeightedDiceLoss(mode='multiclass', ignore_index=255, class_weights=class_weights)
+    #criterion = WeightedDiceLoss(mode='multiclass', ignore_index=255, class_weights=class_weights)
+    criterion = smp.losses.DiceLoss(mode='multiclass',  ignore_index=255)
     dice_loss_fn = smp.losses.DiceLoss(mode='multiclass', ignore_index=255)# 新增：Dice Loss
 
 

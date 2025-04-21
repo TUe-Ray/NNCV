@@ -44,6 +44,17 @@ This project uses a pre-configured Docker container with all necessary dependenc
    In `jobscript_slurm.sh`, set the maximum training time and (optionally) specify the number of GPUs.  
    > ⚠️ If you use multiple GPUs, ensure the training script supports parallel training (manual changes may be required).
 
+
+4. **Submit the Job to the Supercomputer**:  
+   Use the following command to submit the job via SLURM:
+   ```bash
+   sbatch jobscript_slurm.sh
+   ```
+   To check the job status in the queue:
+   ```bash
+   squeue
+   ```
+
 ---
 
 ## 🧪 How to Test the Model on Codalab
